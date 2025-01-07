@@ -3,6 +3,13 @@
   import { WeaveClient } from "@theweave/api";
   import { onMount } from "svelte";
   import { adjustRectToGrid, renderGrid } from "../lib/grid";
+  import {
+    EXAMPLE,
+    computeFrames,
+    type BoxedFrame,
+    normalizeFrame,
+    rollDownFrame,
+  } from "../lib/Frame";
 
   let { weaveClient }: { weaveClient?: WeaveClient } = $props();
 
@@ -15,23 +22,22 @@
   let panY = $state(0);
   let mouseX = $state(0);
   let mouseY = $state(0);
+  let zPanX = $derived(panX * zoom);
+  let zPanY = $derived(panY * zoom);
+  let zGridSize = $derived(gridSize * zoom);
+
+  let computedFrames = $derived(computeFrames(EXAMPLE));
+
+  function mouseToGridPos(x: number, y: number) {
+    const gridX = Math.floor((x - zPanX) / zGridSize);
+    const gridY = Math.floor((y - zPanY) / zGridSize);
+    return [gridX, gridY];
+  }
 
   let isPanning = $state(false);
-  type CreatingRectState = null | {
-    startX: number;
-    startY: number;
-    endX: number;
-    endY: number;
-  };
-  let isCreatingRectangle = $state<CreatingRectState>(null);
   function handleMouseDown(ev: MouseEvent) {
     if (ev.button === 0) {
-      isCreatingRectangle = {
-        startX: ev.clientX,
-        startY: ev.clientY,
-        endX: ev.clientX + gridSize,
-        endY: ev.clientY + gridSize,
-      };
+      isCreatingFrame = true;
     }
     if (ev.button === 1) {
       isPanning = true;
@@ -40,22 +46,64 @@
     }
   }
 
+  let frames = $state<BoxedFrame[]>([]);
+  let workingFrame = $state<null | BoxedFrame>(null);
+  let normalizedWorkingFrame = $derived(normalizeFrame(workingFrame));
+  let frameIsValid = $derived.by(() => {
+    return workingFrame.box.w * workingFrame.box.h > 4;
+  });
+  let isCreatingFrame = $state(false);
   function handleMouseMove(ev: MouseEvent) {
     mouseX = ev.clientX;
     mouseY = ev.clientY;
+
+    const [currentX, currentY] = mouseToGridPos(mouseX, mouseY);
+    if (isCreatingFrame) {
+      // PIN the frame and allow it to expand with cursor movement
+      // x & y stay static
+      // w & h can get both positive and negative values
+      const towardsLeft = currentX < workingFrame.box.x;
+      const towardsUp = currentY < workingFrame.box.y;
+      workingFrame.box = {
+        ...workingFrame.box,
+        w: currentX - workingFrame.box.x + (towardsLeft ? -1 : 1),
+        h: currentY - workingFrame.box.y + (towardsUp ? -1 : 1),
+      };
+    } else {
+      if (
+        !workingFrame ||
+        workingFrame.box.x !== currentX ||
+        workingFrame.box.y !== currentY
+      ) {
+        workingFrame = {
+          box: {
+            x: currentX,
+            y: currentY,
+            w: 1,
+            h: 1,
+          },
+          assetUrl: "weave://vines.lightningrodlabs/topic/substrate",
+          split: null,
+        };
+      }
+    }
 
     if (isPanning) {
       panX += ev.movementX / zoom;
       panY += ev.movementY / zoom;
     }
-
-    if (isCreatingRectangle) {
-    }
   }
 
   function handleMouseUp() {
     isPanning = false;
-    isCreatingRectangle = null;
+    if (isCreatingFrame) {
+      isCreatingFrame = false;
+      // Create frame
+
+      const normalized = normalizeFrame(workingFrame);
+      frames = [...frames, normalized];
+      workingFrame = rollDownFrame(workingFrame);
+    }
   }
 
   const maxZoom = 4; // x4 the original size
@@ -63,22 +111,28 @@
   const zoomStep = 0.001; // % zoomed for each deltaY
   function handleWheel(ev: WheelEvent) {
     ev.preventDefault();
-    const prevZoom = zoom;
-    zoom += ev.deltaY * zoomStep;
-    if (zoom < minZoom) zoom = minZoom;
-    if (zoom > maxZoom) zoom = maxZoom;
-    const zoomDelta = 1 - zoom / prevZoom;
-    if (zoomDelta !== 0) {
-      const screenPos = screenToCanvasPos(ev);
-      panX += (screenPos[0] * zoomDelta) / zoom;
-      panY += (screenPos[1] * zoomDelta) / zoom;
-    }
+    setZoom(zoom + ev.deltaY * zoomStep, ev.clientX, ev.clientY);
   }
 
-  function screenToCanvasPos(ev: { clientX: number; clientY: number }) {
+  function setZoom(newZoom: number, centerX?: number, centerY?: number) {
+    if (!centerX) centerX = width / 2;
+    if (!centerY) centerY = height / 2;
+    let processedZoom = newZoom;
+    if (newZoom < minZoom) processedZoom = minZoom;
+    if (newZoom > maxZoom) processedZoom = maxZoom;
+    const zoomDelta = 1 - processedZoom / zoom;
+    if (zoomDelta !== 0) {
+      const screenPos = screenToCanvasPos(centerX, centerY);
+      panX += (screenPos[0] * zoomDelta) / processedZoom;
+      panY += (screenPos[1] * zoomDelta) / processedZoom;
+    }
+    zoom = processedZoom;
+  }
+
+  function screenToCanvasPos(x: number, y: number) {
     const imgBox = gridEl.getBoundingClientRect();
-    const relativeX = ev.clientX - imgBox.left;
-    const relativeY = ev.clientY - imgBox.top;
+    const relativeX = x - imgBox.left;
+    const relativeY = y - imgBox.top;
     return [relativeX, relativeY] as [number, number];
   }
 
@@ -119,53 +173,74 @@
       size: gridSize,
     });
   });
-
-  // Render cursor on cursor grid
-  $effect(() => {
-    const zGridSize = gridSize * zoom;
-    const zPanX = panX * zoom;
-    const zPanY = panY * zoom;
-
-    function getGridPos(x: number, y: number) {
-      const gridX = Math.floor((x - zPanX) / zGridSize);
-      const gridY = Math.floor((y - zPanY) / zGridSize);
-      return [gridX, gridY];
-    }
-
-    const [gridX, gridY] = getGridPos(mouseX, mouseY);
-
-    const rect = {
-      startX: gridX * zGridSize + zPanX,
-      startY: gridY * zGridSize + zPanY,
-      endX: gridX * zGridSize + zGridSize + zPanX,
-      endY: gridY * zGridSize + zGridSize + zPanY,
-    };
-
-    cursorCtx.clearRect(0, 0, width, height);
-    cursorCtx.beginPath();
-    cursorCtx.moveTo(rect.startX, rect.endX);
-    cursorCtx.fillStyle = "red";
-    cursorCtx.fillRect(
-      rect.startX,
-      rect.startY,
-      rect.endX - rect.startX,
-      rect.endY - rect.startY
-    );
-
-    cursorCtx.stroke();
-  });
 </script>
 
-<canvas
+<div
   onmousedown={handleMouseDown}
   onmouseup={handleMouseUp}
   onmousemove={handleMouseMove}
   onwheel={handleWheel}
-  class={cx("h-full w-full absolute top-0 left-0", {
+  role="presentation"
+  class={cx("absolute inset-0 overflow-hidden", {
     "cursor-grabbing": isPanning,
   })}
-  bind:this={gridEl}
-></canvas>
+>
+  <canvas class="h-full w-full absolute top-0 left-0" bind:this={gridEl}
+  ></canvas>
+
+  <div
+    class="absolute top-0 left-0 pointer-events-none"
+    style={`transform: translateX(${zPanX}px) translateY(${zPanY}px) scale(${zoom})`}
+  >
+    {#if workingFrame}
+      {@const frame = normalizedWorkingFrame}
+      <div
+        style={`
+      width: ${gridSize * frame.box.w}px;
+      height: ${gridSize * frame.box.h}px;
+      transform: translateX(${frame.box.x * gridSize}px) translateY(${frame.box.y * gridSize}px);
+    `}
+        class={cx("z-60  b-2  absolute top-0 left-0 rounded-md", {
+          "bg-sky-500/10 b-sky-500/60": !frameIsValid,
+          "bg-sky-500/50 b-sky-500/100": frameIsValid,
+        })}
+      ></div>
+    {/if}
+    {#each frames as frame}
+      <div
+        style={`
+          width: ${gridSize * frame.box.w}px;
+          height: ${gridSize * frame.box.h}px;
+          transform: translateX(${frame.box.x * gridSize}px) translateY(${frame.box.y * gridSize}px);
+        `}
+        class="z-50 bg-gray-100 b-2 b-gray-300 absolute top-0 left-0 rounded-md shadow-md"
+      >
+        {frame.assetUrl}
+      </div>
+    {/each}
+    {#each computedFrames as frame}
+      <div
+        style={`
+          width: ${gridSize * frame.box.w}px;
+          height: ${gridSize * frame.box.h}px;
+          transform: translateX(${frame.box.x * gridSize}px) translateY(${frame.box.y * gridSize}px);
+        `}
+        class="z-50 bg-gray-100 b-2 b-gray-300 absolute top-0 left-0 rounded-md shadow-md"
+      >
+        {frame.assetUrl}
+      </div>
+    {/each}
+  </div>
+</div>
+
+{#if zoom !== 1}
+  <button
+    class="absolute bottom-2 right-2 px2 py1 bg-white rounded-md text-xs z-100"
+    onclick={() => setZoom(1)}
+  >
+    {Math.round(zoom * 100)}%
+  </button>
+{/if}
 
 <canvas
   class="absolute top-0 left-0 w-full h-full pointer-events-none"
