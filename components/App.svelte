@@ -27,7 +27,7 @@
     class="absolute top-0 left-0 z-20"
     style={`transform: translateX(${S.pos.zx}px) translateY(${S.pos.zy}px) scale(${S.pos.z})`}
   >
-    {#if S.ghostFrame}
+    {#if S.ghostFrame && !S.movingFrame}
       {@const box = S.boxInPx(S.ghostFrame.box)}
 
       <div
@@ -43,7 +43,14 @@
       ></div>
     {/if}
     {#each S.frames as frame, i}
-      {@const box = S.boxInPx(frame.box)}
+      {@const box =
+        S.movingFrame && i === S.movingFrame.i
+          ? S.boxInPx({
+              ...frame.box,
+              x: frame.box.x + S.movingFrame.boxDelta.x,
+              y: frame.box.y + S.movingFrame.boxDelta.y,
+            })
+          : S.boxInPx(frame.box)}
       <div
         style={`
           width: ${box.w}px;
