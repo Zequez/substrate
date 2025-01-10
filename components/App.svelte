@@ -3,8 +3,9 @@
   import { WeaveClient } from "@theweave/api";
 
   let { weaveClient }: { weaveClient?: WeaveClient } = $props();
-  import S from "../lib/state.svelte";
+  import S, { type BoxResizeHandles } from "../lib/state.svelte";
   import { type Box } from "../lib/Frame";
+  import ResizeHandle from "./ResizeHandle.svelte";
 
   S.init();
 
@@ -73,6 +74,8 @@
           : S.currentAction.type === "resizeFrame" && i === S.currentAction.i
             ? S.boxInPx(S.currentAction.newBox)
             : S.boxInPx(frame.box)}
+      {@const resizeHandler = (ev: MouseEvent, p: BoxResizeHandles) =>
+        S.ev.mousedown(ev, ["frame-resize", p, i])}
       <div
         style={`
           width: ${box.w}px;
@@ -82,6 +85,7 @@
         class="z-40 bg-gray-100 b-gray-300 absolute top-0 left-0 rounded-md shadow-md"
       >
         {frame.assetUrl}
+
         <button
           aria-label="Pick frame up"
           onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", i])}
@@ -89,61 +93,15 @@
           style={`height: ${S.zGridSize}px; width: ${S.zGridSize}px`}
         ></button>
         <!-- Right handle -->
-        <button
-          aria-label="Resize frame right"
-          class="absolute -right-1 top-2 bottom-2 bg-red-500 w2 cursor-ew-resize"
-          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-resize", "r", i])}
-        >
-        </button>
-        <!-- Left handle -->
-        <button
-          aria-label="Resize frame left"
-          class="absolute -left-1 top-2 bottom-2 bg-red-500 w2 cursor-ew-resize"
-          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-resize", "l", i])}
-        >
-        </button>
-        <!-- Top handle -->
-        <button
-          aria-label="Resize frame top"
-          class="absolute -top-1 left-2 right-2 bg-red-500 h2 cursor-ns-resize"
-          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-resize", "t", i])}
-        >
-        </button>
-        <!-- Bottom handle -->
-        <button
-          aria-label="Resize frame bottom"
-          class="absolute -bottom-1 left-2 right-2 bg-red-500 h2 cursor-ns-resize"
-          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-resize", "b", i])}
-        >
-        </button>
-        <!-- TR handle -->
-        <button
-          aria-label="Resize frame top right"
-          class="absolute -top-1 -right-1 bg-orange-500 h4 w4 cursor-nesw-resize"
-          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-resize", "tr", i])}
-        >
-        </button>
-        <!-- BL handle -->
-        <button
-          aria-label="Resize frame bottom left"
-          class="absolute -bottom-1 -left-1 bg-orange-500 h4 w4 cursor-nesw-resize"
-          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-resize", "bl", i])}
-        >
-        </button>
-        <!-- TL handle -->
-        <button
-          aria-label="Resize frame top left"
-          class="absolute -top-1 -left-1 bg-orange-500 h4 w4 cursor-nwse-resize"
-          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-resize", "tl", i])}
-        >
-        </button>
-        <!-- BR handle -->
-        <button
-          aria-label="Resize frame bottom right"
-          class="absolute -bottom-1 -right-1 bg-orange-500 h4 w4 cursor-nwse-resize"
-          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-resize", "br", i])}
-        >
-        </button>
+
+        <ResizeHandle pos="t" onMouseDown={resizeHandler} />
+        <ResizeHandle pos="tr" onMouseDown={resizeHandler} />
+        <ResizeHandle pos="r" onMouseDown={resizeHandler} />
+        <ResizeHandle pos="br" onMouseDown={resizeHandler} />
+        <ResizeHandle pos="b" onMouseDown={resizeHandler} />
+        <ResizeHandle pos="bl" onMouseDown={resizeHandler} />
+        <ResizeHandle pos="l" onMouseDown={resizeHandler} />
+        <ResizeHandle pos="tl" onMouseDown={resizeHandler} />
       </div>
     {/each}
   </div>

@@ -39,7 +39,15 @@ let frames = $state<BoxedFrame[]>([]);
 // ██║  ██║╚██████╗   ██║   ██║╚██████╔╝██║ ╚████║███████║
 // ╚═╝  ╚═╝ ╚═════╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝
 
-type BoxResizeHandles = "l" | "r" | "b" | "t" | "tr" | "br" | "tl" | "bl";
+export type BoxResizeHandles =
+  | "l"
+  | "r"
+  | "b"
+  | "t"
+  | "tr"
+  | "br"
+  | "tl"
+  | "bl";
 
 type MouseDownActions =
   | { type: "none" }
