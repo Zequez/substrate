@@ -70,7 +70,9 @@
               x: frame.box.x + S.currentAction.boxDelta.x,
               y: frame.box.y + S.currentAction.boxDelta.y,
             })
-          : S.boxInPx(frame.box)}
+          : S.currentAction.type === "resizeFrame" && i === S.currentAction.i
+            ? S.boxInPx(S.currentAction.newBox)
+            : S.boxInPx(frame.box)}
       <div
         style={`
           width: ${box.w}px;
@@ -80,11 +82,68 @@
         class="z-40 bg-gray-100 b-gray-300 absolute top-0 left-0 rounded-md shadow-md"
       >
         {frame.assetUrl}
-        <div
-          data-frame-picker={i}
+        <button
+          aria-label="Pick frame up"
+          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", i])}
           class="absolute left-1/2 bottom-full -translate-x-1/2 bg-black/70 rounded-t-md cursor-move"
           style={`height: ${S.zGridSize}px; width: ${S.zGridSize}px`}
-        ></div>
+        ></button>
+        <!-- Right handle -->
+        <button
+          aria-label="Resize frame right"
+          class="absolute -right-1 top-2 bottom-2 bg-red-500 w2 cursor-ew-resize"
+          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-resize", "r", i])}
+        >
+        </button>
+        <!-- Left handle -->
+        <button
+          aria-label="Resize frame left"
+          class="absolute -left-1 top-2 bottom-2 bg-red-500 w2 cursor-ew-resize"
+          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-resize", "l", i])}
+        >
+        </button>
+        <!-- Top handle -->
+        <button
+          aria-label="Resize frame top"
+          class="absolute -top-1 left-2 right-2 bg-red-500 h2 cursor-ns-resize"
+          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-resize", "t", i])}
+        >
+        </button>
+        <!-- Bottom handle -->
+        <button
+          aria-label="Resize frame bottom"
+          class="absolute -bottom-1 left-2 right-2 bg-red-500 h2 cursor-ns-resize"
+          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-resize", "b", i])}
+        >
+        </button>
+        <!-- TR handle -->
+        <button
+          aria-label="Resize frame top right"
+          class="absolute -top-1 -right-1 bg-orange-500 h4 w4 cursor-nesw-resize"
+          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-resize", "tr", i])}
+        >
+        </button>
+        <!-- BL handle -->
+        <button
+          aria-label="Resize frame bottom left"
+          class="absolute -bottom-1 -left-1 bg-orange-500 h4 w4 cursor-nesw-resize"
+          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-resize", "bl", i])}
+        >
+        </button>
+        <!-- TL handle -->
+        <button
+          aria-label="Resize frame top left"
+          class="absolute -top-1 -left-1 bg-orange-500 h4 w4 cursor-nwse-resize"
+          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-resize", "tl", i])}
+        >
+        </button>
+        <!-- BR handle -->
+        <button
+          aria-label="Resize frame bottom right"
+          class="absolute -bottom-1 -right-1 bg-orange-500 h4 w4 cursor-nwse-resize"
+          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-resize", "br", i])}
+        >
+        </button>
       </div>
     {/each}
   </div>

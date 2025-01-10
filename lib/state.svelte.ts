@@ -39,6 +39,8 @@ let frames = $state<BoxedFrame[]>([]);
 // ██║  ██║╚██████╗   ██║   ██║╚██████╔╝██║ ╚████║███████║
 // ╚═╝  ╚═╝ ╚═════╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝
 
+type BoxResizeHandles = "l" | "r" | "b" | "t" | "tr" | "br" | "tl" | "bl";
+
 type MouseDownActions =
   | { type: "none" }
   | { type: "pan" }
@@ -50,34 +52,53 @@ type MouseDownActions =
       startY: number;
       boxDelta: { x: number; y: number };
     }
-  | { type: "resizeFrameEW" }
-  | { type: "resizeFrameNS" }
-  | { type: "resizeFrame" };
+  | {
+      type: "resizeFrame";
+      pos: BoxResizeHandles;
+      i: number;
+      startX: number;
+      startY: number;
+      newBox: Box;
+    };
 let mouseDown = $state<MouseDownActions>({ type: "none" });
 
-function handleMouseDown(ev: MouseEvent) {
-  if (ev.button === 1) {
-    mouseDown = { type: "pan" };
-  } else if (ev.button === 0) {
-    const target = ev.target as HTMLElement;
-    const isPickingFrame = parseInt(
-      target.getAttribute("data-frame-picker")!,
-      10
-    );
-    if (!isNaN(isPickingFrame)) {
-      // Move frame
-      const [startX, startY] = mouseToGridPos(ev.clientX, ev.clientY);
-      mouseDown = {
-        type: "moveFrame",
-        i: isPickingFrame,
-        startX,
-        startY,
-        boxDelta: {
-          x: 0,
-          y: 0,
-        },
-      };
-    } else {
+function handleMouseDown(
+  ev: MouseEvent,
+  target?: ["frame-picker", number] | ["frame-resize", BoxResizeHandles, number]
+) {
+  if (target) {
+    ev.stopPropagation();
+    switch (target[0]) {
+      case "frame-picker": {
+        const [startX, startY] = mouseToGridPos(ev.clientX, ev.clientY);
+        mouseDown = {
+          type: "moveFrame",
+          i: target[1],
+          startX,
+          startY,
+          boxDelta: {
+            x: 0,
+            y: 0,
+          },
+        };
+        break;
+      }
+      case "frame-resize": {
+        const [startX, startY] = mouseToGridPos(ev.clientX, ev.clientY);
+        mouseDown = {
+          type: "resizeFrame",
+          pos: target[1],
+          i: target[2],
+          startX,
+          startY,
+          newBox: frames[target[2]].box,
+        };
+      }
+    }
+  } else {
+    if (ev.button === 1) {
+      mouseDown = { type: "pan" };
+    } else if (ev.button === 0) {
       mouseDown = {
         type: "createFrame",
         box: mouseBox,
@@ -100,7 +121,6 @@ function handleMouseMove(ev: MouseEvent) {
       // PIN the frame and allow it to expand with cursor movement
       // x & y stay static
       // w & h can get both positive and negative values
-      mouseDown.box;
       const towardsLeft = mouseGridX < mouseDown.box.x;
       const towardsUp = mouseGridY < mouseDown.box.y;
       mouseDown.box = {
@@ -112,7 +132,6 @@ function handleMouseMove(ev: MouseEvent) {
       break;
     }
     case "moveFrame": {
-      mouseGridX;
       const boxDelta = {
         x: mouseGridX - mouseDown.startX,
         y: mouseGridY - mouseDown.startY,
@@ -120,6 +139,68 @@ function handleMouseMove(ev: MouseEvent) {
       mouseDown.boxDelta.x = boxDelta.x;
       mouseDown.boxDelta.y = boxDelta.y;
       break;
+    }
+    case "resizeFrame": {
+      const frame = frames[mouseDown.i];
+      // let minX = -Infinity;
+      // let maxX = Infinity;
+      // let minY = -Infinity;
+      // let maxY = Infinity;
+      let deltaX = mouseGridX - mouseDown.startX;
+      let deltaY = mouseGridY - mouseDown.startY;
+      // mouseGridX - mouseDown.startX
+      // mouseGridY - mouseDown.startY;
+      if (mouseDown.pos === "l") {
+        mouseDown.newBox = {
+          ...frame.box,
+          x: Math.min(frame.box.x + deltaX, frame.box.x + frame.box.w - 2),
+          w: Math.max(2, frame.box.w - deltaX),
+        };
+      } else if (mouseDown.pos === "r") {
+        mouseDown.newBox = {
+          ...frame.box,
+          w: Math.max(2, frame.box.w + deltaX),
+        };
+      } else if (mouseDown.pos === "t") {
+        mouseDown.newBox = {
+          ...frame.box,
+          y: Math.min(frame.box.y + deltaY, frame.box.y + frame.box.h - 2),
+          h: Math.max(2, frame.box.h - deltaY),
+        };
+      } else if (mouseDown.pos === "b") {
+        mouseDown.newBox = {
+          ...frame.box,
+          h: Math.max(2, frame.box.h + deltaY),
+        };
+      } else if (mouseDown.pos === "br") {
+        mouseDown.newBox = {
+          ...frame.box,
+          h: Math.max(2, frame.box.h + deltaY),
+          w: Math.max(2, frame.box.w + deltaX),
+        };
+      } else if (mouseDown.pos === "tl") {
+        mouseDown.newBox = {
+          ...frame.box,
+          y: Math.min(frame.box.y + deltaY, frame.box.y + frame.box.h - 2),
+          h: Math.max(2, frame.box.h - deltaY),
+          x: Math.min(frame.box.x + deltaX, frame.box.x + frame.box.w - 2),
+          w: Math.max(2, frame.box.w - deltaX),
+        };
+      } else if (mouseDown.pos === "tr") {
+        mouseDown.newBox = {
+          ...frame.box,
+          y: Math.min(frame.box.y + deltaY, frame.box.y + frame.box.h - 2),
+          h: Math.max(2, frame.box.h - deltaY),
+          w: Math.max(2, frame.box.w + deltaX),
+        };
+      } else if (mouseDown.pos === "bl") {
+        mouseDown.newBox = {
+          ...frame.box,
+          h: Math.max(2, frame.box.h + deltaY),
+          x: Math.min(frame.box.x + deltaX, frame.box.x + frame.box.w - 2),
+          w: Math.max(2, frame.box.w - deltaX),
+        };
+      }
     }
   }
 }
@@ -140,6 +221,10 @@ function handleMouseUp() {
       frame.box.x += mouseDown.boxDelta.x;
       frame.box.y += mouseDown.boxDelta.y;
       break;
+    }
+    case "resizeFrame": {
+      const frame = frames[mouseDown.i];
+      frame.box = mouseDown.newBox;
     }
     default: {
       console.log("Nothing to do on mouse up for", mouseDown.type);
