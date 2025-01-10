@@ -3,6 +3,7 @@ import {
   normalizeFrame,
   type Box,
   rollDownFrame,
+  normalizeBox,
 } from "./Frame";
 import { adjustRectToGrid, renderGrid } from "./grid";
 import { onMount } from "svelte";
@@ -22,184 +23,129 @@ let panX = $state(0);
 let panY = $state(0);
 let mouseX = $state(0);
 let mouseY = $state(0);
-let isMouseDown = $state(false);
-let mouseDownX = $state(0);
-let mouseDownY = $state(0);
-let mouseDownDx = $state(0);
-let mouseDownDy = $state(0);
 let [mouseGridX, mouseGridY] = $derived(mouseToGridPos(mouseX, mouseY));
-let isPanning = $state(false);
-
-type MouseDownActions =
-  | { type: "pan" }
-  | { type: "createFrame" }
-  | { type: "moveFrame" };
+let mouseBox = $derived<Box>({ x: mouseGridX, y: mouseGridY, w: 1, h: 1 });
 
 let zPanX = $derived(panX * zoom);
 let zPanY = $derived(panY * zoom);
 let zGridSize = $derived(gridSize * zoom);
 
 let frames = $state<BoxedFrame[]>([]);
-let workingFrame = $state<null | BoxedFrame>(null);
-let normalizedWorkingFrame = $derived(
-  workingFrame ? normalizeFrame(workingFrame) : null
-);
-let frameIsValid = $derived(
-  workingFrame ? workingFrame.box.w * workingFrame.box.h > 4 : false
-);
 
-let isCreatingFrame = $state(false);
+//  █████╗  ██████╗████████╗██╗ ██████╗ ███╗   ██╗███████╗
+// ██╔══██╗██╔════╝╚══██╔══╝██║██╔═══██╗████╗  ██║██╔════╝
+// ███████║██║        ██║   ██║██║   ██║██╔██╗ ██║███████╗
+// ██╔══██║██║        ██║   ██║██║   ██║██║╚██╗██║╚════██║
+// ██║  ██║╚██████╗   ██║   ██║╚██████╔╝██║ ╚████║███████║
+// ╚═╝  ╚═╝ ╚═════╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝
 
-// Multi-step actions
-
-let movingFrame = $state<null | {
-  i: number;
-  startX: number;
-  startY: number;
-  boxDelta: {
-    x: number;
-    y: number;
-  };
-}>(null);
-// let movingFrameBoxPos = $state<null | { gridX: number; gridY: number }>(null);
-// const movingFrameOut = $derived(() => {
-//   if (!movingFrame) return null;
-//   const frame = frames[movingFrame.frameIndex];
-//   const [gridX, gridY] = mouseToGridPos(movingFrame.cursorX, movingFrame.cursorY)
-//   frame.box.x
-//   frame.box.y
-//   return {gridX, gridY, frame}
-// });
-
-// function cursorToPickedFramePosition(x: number, y: number) {
-//   const frame = frames[movingFrame!.frameIndex];
-
-//   const [gridX, gridY] = mouseToGridPos(movingFrame!.cursorX, movingFrame!.cursorY)
-
-//   // const gridX = Math.floor((x - zPanX) / zGridSize);
-//   // const gridY = Math.floor((y - zPanY) / zGridSize);
-//   return [gridX, gridY];
-// }
+type MouseDownActions =
+  | { type: "none" }
+  | { type: "pan" }
+  | { type: "createFrame"; box: Box; boxNormalized: Box }
+  | {
+      type: "moveFrame";
+      i: number;
+      startX: number;
+      startY: number;
+      boxDelta: { x: number; y: number };
+    }
+  | { type: "resizeFrameEW" }
+  | { type: "resizeFrameNS" }
+  | { type: "resizeFrame" };
+let mouseDown = $state<MouseDownActions>({ type: "none" });
 
 function handleMouseDown(ev: MouseEvent) {
-  isMouseDown = true;
-  mouseDownX = ev.clientX;
-  mouseDownY = ev.clientY;
-  const target = ev.target as HTMLElement;
-  const isPickingFrame = parseInt(
-    target.getAttribute("data-frame-picker")!,
-    10
-  );
-
-  if (isNaN(isPickingFrame)) {
-    if (ev.button === 0) {
-      isCreatingFrame = true;
+  if (ev.button === 1) {
+    mouseDown = { type: "pan" };
+  } else if (ev.button === 0) {
+    const target = ev.target as HTMLElement;
+    const isPickingFrame = parseInt(
+      target.getAttribute("data-frame-picker")!,
+      10
+    );
+    if (!isNaN(isPickingFrame)) {
+      // Move frame
+      const [startX, startY] = mouseToGridPos(ev.clientX, ev.clientY);
+      mouseDown = {
+        type: "moveFrame",
+        i: isPickingFrame,
+        startX,
+        startY,
+        boxDelta: {
+          x: 0,
+          y: 0,
+        },
+      };
+    } else {
+      mouseDown = {
+        type: "createFrame",
+        box: mouseBox,
+        boxNormalized: mouseBox,
+      };
     }
-    if (ev.button === 1) {
-      isPanning = true;
-      ev.clientX;
-      ev.clientY;
-    }
-  } else {
-    const frame = frames[isPickingFrame];
-    const [startX, startY] = mouseToGridPos(mouseDownX, mouseDownY);
-    movingFrame = {
-      i: isPickingFrame,
-      startX,
-      startY,
-      boxDelta: {
-        x: 0,
-        y: 0,
-      },
-    };
   }
 }
 
 function handleMouseMove(ev: MouseEvent) {
   mouseX = ev.clientX;
   mouseY = ev.clientY;
-  if (isMouseDown) {
-    mouseDownDx += ev.movementX;
-    mouseDownDy += ev.movementY;
-  }
 
-  if (movingFrame) {
-    const [endX, endY] = mouseToGridPos(mouseX, mouseY);
-    const boxDelta = {
-      x: endX - movingFrame.startX,
-      y: endY - movingFrame.startY,
-    };
-    movingFrame.boxDelta.x = boxDelta.x;
-    movingFrame.boxDelta.y = boxDelta.y;
-
-    // const frame = frames[movingFrame.i];
-    // const [newBoxX, newBoxY] = mouseToGridPos(
-    //   frame.box.x * gridSize + mouseDownDx,
-    //   frame.box.y * gridSize + mouseDownDy
-    // );
-    // console.log("Frame", frame.box.x, frame.box.y);
-    // console.log("BoxX", newBoxX, newBoxY);
-    // movingFrame.box = { x: newBoxX, y: newBoxY };
-  }
-
-  if (isCreatingFrame && workingFrame) {
-    // PIN the frame and allow it to expand with cursor movement
-    // x & y stay static
-    // w & h can get both positive and negative values
-    const towardsLeft = mouseGridX < workingFrame.box.x;
-    const towardsUp = mouseGridY < workingFrame.box.y;
-    workingFrame.box = {
-      ...workingFrame.box,
-      w: mouseGridX - workingFrame.box.x + (towardsLeft ? -1 : 1),
-      h: mouseGridY - workingFrame.box.y + (towardsUp ? -1 : 1),
-    };
-  } else {
-    if (
-      !workingFrame ||
-      workingFrame.box.x !== mouseGridX ||
-      workingFrame.box.y !== mouseGridY
-    ) {
-      workingFrame = {
-        box: {
-          x: mouseGridX,
-          y: mouseGridY,
-          w: 1,
-          h: 1,
-        },
-        assetUrl: "weave://vines.lightningrodlabs/topic/substrate",
-        split: null,
+  switch (mouseDown.type) {
+    case "pan":
+      panX = panX + ev.movementX / zoom;
+      panY = panY + ev.movementY / zoom;
+      break;
+    case "createFrame": {
+      // PIN the frame and allow it to expand with cursor movement
+      // x & y stay static
+      // w & h can get both positive and negative values
+      mouseDown.box;
+      const towardsLeft = mouseGridX < mouseDown.box.x;
+      const towardsUp = mouseGridY < mouseDown.box.y;
+      mouseDown.box = {
+        ...mouseDown.box,
+        w: mouseGridX - mouseDown.box.x + (towardsLeft ? -1 : 1),
+        h: mouseGridY - mouseDown.box.y + (towardsUp ? -1 : 1),
       };
+      mouseDown.boxNormalized = normalizeBox(mouseDown.box);
+      break;
     }
-  }
-
-  if (isPanning) {
-    panX += ev.movementX / zoom;
-    panY += ev.movementY / zoom;
+    case "moveFrame": {
+      mouseGridX;
+      const boxDelta = {
+        x: mouseGridX - mouseDown.startX,
+        y: mouseGridY - mouseDown.startY,
+      };
+      mouseDown.boxDelta.x = boxDelta.x;
+      mouseDown.boxDelta.y = boxDelta.y;
+      break;
+    }
   }
 }
 
 function handleMouseUp() {
-  isMouseDown = false;
-  isPanning = false;
-
-  if (isCreatingFrame && workingFrame) {
-    isCreatingFrame = false;
-    // Create frame
-
-    const normalized = normalizeFrame(workingFrame);
-    frames = [...frames, normalized];
-    workingFrame = rollDownFrame(workingFrame);
+  switch (mouseDown.type) {
+    case "createFrame": {
+      const newFrame: BoxedFrame = {
+        box: mouseDown.boxNormalized,
+        assetUrl: "Nothing",
+        split: null,
+      };
+      frames = [...frames, newFrame];
+      break;
+    }
+    case "moveFrame": {
+      const frame = frames[mouseDown.i];
+      frame.box.x += mouseDown.boxDelta.x;
+      frame.box.y += mouseDown.boxDelta.y;
+      break;
+    }
+    default: {
+      console.log("Nothing to do on mouse up for", mouseDown.type);
+    }
   }
-
-  if (movingFrame) {
-    const frame = frames[movingFrame.i];
-    frame.box.x += movingFrame.boxDelta.x;
-    frame.box.y += movingFrame.boxDelta.y;
-    movingFrame = null;
-  }
-
-  mouseDownDx = 0;
-  mouseDownDy = 0;
+  mouseDown = { type: "none" };
 }
 
 function handleWheel(ev: WheelEvent) {
@@ -314,14 +260,8 @@ const state = {
   get zGridSize() {
     return zGridSize;
   },
-  get isPanning() {
-    return isPanning;
-  },
-  get isCreatingFrame() {
-    return isCreatingFrame;
-  },
-  get movingFrame() {
-    return movingFrame;
+  get currentAction() {
+    return mouseDown;
   },
   pos: {
     get z() {
@@ -340,26 +280,8 @@ const state = {
       return zPanY;
     },
   },
-  get ghostFrame() {
-    return normalizedWorkingFrame;
-  },
-  get ghostFrameIsValid() {
-    return frameIsValid;
-  },
-  get normalizedWorkingFrame() {
-    return normalizedWorkingFrame;
-  },
-  get frameIsValid() {
-    return frameIsValid;
-  },
   get frames() {
     return frames;
-  },
-  get width() {
-    return width;
-  },
-  get height() {
-    return height;
   },
   gridToPx: (n: number) => n * gridSize,
   boxInPx: (box: Box): Box => ({
@@ -368,6 +290,9 @@ const state = {
     w: box.w * gridSize,
     h: box.h * gridSize,
   }),
+  get mouseBox(): Box {
+    return mouseBox;
+  },
 };
 
 export default state;

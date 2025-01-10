@@ -89,6 +89,15 @@ export function normalizeFrame(frame: BoxedFrame): BoxedFrame {
   return { ...frame, box: { x, y, w, h } };
 }
 
+export function normalizeBox(box: Box): Box {
+  if (box.w > 0 && box.h > 0) return box;
+  const x = box.w > 0 ? box.x : box.x + box.w + 1;
+  const y = box.h > 0 ? box.y : box.y + box.h + 1;
+  const w = Math.abs(box.w);
+  const h = Math.abs(box.h);
+  return { x, y, w, h };
+}
+
 // Creates a 1x1 frame at the furthest point from the frame pin location (where the mouse is)
 export function rollDownFrame(frame: BoxedFrame): BoxedFrame {
   return {

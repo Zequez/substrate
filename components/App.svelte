@@ -4,8 +4,13 @@
 
   let { weaveClient }: { weaveClient?: WeaveClient } = $props();
   import S from "../lib/state.svelte";
+  import { type Box } from "../lib/Frame";
 
   S.init();
+
+  function boxSizeIsEnough(box: Box) {
+    return box.w * box.h > 4;
+  }
 </script>
 
 <div
@@ -14,12 +19,13 @@
   onmousemove={S.ev.mousemove}
   onwheel={S.ev.wheel}
   role="presentation"
-  class={cx("absolute inset-0 overflow-hidden", {})}
+  class={cx("absolute inset-0 overflow-hidden", {
+    "cursor-grabbing":
+      S.currentAction.type === "pan" || S.currentAction.type === "moveFrame",
+  })}
 >
   <canvas
-    class={cx("h-full w-full absolute top-0 left-0 z-10", {
-      "cursor-grabbing": S.isPanning,
-    })}
+    class="h-full w-full absolute top-0 left-0 z-10"
     bind:this={S.ref.grid}
   ></canvas>
 
@@ -27,8 +33,22 @@
     class="absolute top-0 left-0 z-20"
     style={`transform: translateX(${S.pos.zx}px) translateY(${S.pos.zy}px) scale(${S.pos.z})`}
   >
-    {#if S.ghostFrame && !S.movingFrame}
-      {@const box = S.boxInPx(S.ghostFrame.box)}
+    {#if S.currentAction.type === "none"}
+      {@const box = S.boxInPx(S.mouseBox)}
+      <div
+        style={`
+
+          width: ${box.w}px;
+          height: ${box.h}px;
+          transform: translateX(${box.x}px) translateY(${box.y}px);
+        `}
+        class={cx(
+          "z-30  b-2 absolute top-0 left-0 rounded-md bg-sky-500/10 b-sky-500/60"
+        )}
+      ></div>
+    {:else if S.currentAction.type === "createFrame"}
+      {@const boxValid = boxSizeIsEnough(S.currentAction.box)}
+      {@const box = S.boxInPx(S.currentAction.box)}
 
       <div
         style={`
@@ -37,18 +57,18 @@
           transform: translateX(${box.x}px) translateY(${box.y}px);
         `}
         class={cx("z-30  b-2  absolute top-0 left-0 rounded-md", {
-          "bg-sky-500/10 b-sky-500/60": !S.ghostFrameIsValid,
-          "bg-sky-500/50 b-sky-500/100": S.ghostFrameIsValid,
+          "bg-sky-500/10 b-sky-500/60": !boxValid,
+          "bg-sky-500/50 b-sky-500/100": boxValid,
         })}
       ></div>
     {/if}
-    {#each S.frames as frame, i}
+    {#each S.frames as frame, i (i)}
       {@const box =
-        S.movingFrame && i === S.movingFrame.i
+        S.currentAction.type === "moveFrame" && i === S.currentAction.i
           ? S.boxInPx({
               ...frame.box,
-              x: frame.box.x + S.movingFrame.boxDelta.x,
-              y: frame.box.y + S.movingFrame.boxDelta.y,
+              x: frame.box.x + S.currentAction.boxDelta.x,
+              y: frame.box.y + S.currentAction.boxDelta.y,
             })
           : S.boxInPx(frame.box)}
       <div
