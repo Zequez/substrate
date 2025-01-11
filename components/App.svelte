@@ -10,7 +10,7 @@
   S.init();
 
   function boxSizeIsEnough(box: Box) {
-    return box.w * box.h > 4;
+    return box.w * box.h >= 4;
   }
 </script>
 
@@ -48,8 +48,8 @@
         )}
       ></div>
     {:else if S.currentAction.type === "createFrame"}
-      {@const boxValid = boxSizeIsEnough(S.currentAction.box)}
-      {@const box = S.boxInPx(S.currentAction.box)}
+      {@const boxValid = boxSizeIsEnough(S.currentAction.boxNormalized)}
+      {@const box = S.boxInPx(S.currentAction.boxNormalized)}
 
       <div
         style={`
@@ -57,7 +57,7 @@
           height: ${box.h}px;
           transform: translateX(${box.x}px) translateY(${box.y}px);
         `}
-        class={cx("z-30  b-2  absolute top-0 left-0 rounded-md", {
+        class={cx("z-50  b-2  absolute top-0 left-0 rounded-md", {
           "bg-sky-500/10 b-sky-500/60": !boxValid,
           "bg-sky-500/50 b-sky-500/100": boxValid,
         })}

@@ -216,12 +216,14 @@ function handleMouseMove(ev: MouseEvent) {
 function handleMouseUp() {
   switch (mouseDown.type) {
     case "createFrame": {
-      const newFrame: BoxedFrame = {
-        box: mouseDown.boxNormalized,
-        assetUrl: "Nothing",
-        split: null,
-      };
-      frames = [...frames, newFrame];
+      if (mouseDown.boxNormalized.w * mouseDown.boxNormalized.h >= 4) {
+        const newFrame: BoxedFrame = {
+          box: mouseDown.boxNormalized,
+          assetUrl: "Nothing",
+          split: null,
+        };
+        frames = [...frames, newFrame];
+      }
       break;
     }
     case "moveFrame": {
