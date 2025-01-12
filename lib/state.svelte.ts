@@ -1,4 +1,16 @@
 import {
+  WeaveClient,
+  weaveUrlToLocation,
+  stringifyHrl,
+  encodeContext,
+  type WAL,
+} from "@theweave/api";
+import {
+  urlFromAppletHash,
+  appletOrigin,
+} from "@theweave/elements/dist/utils.js";
+import { onMount } from "svelte";
+import {
   type BoxedFrame,
   normalizeFrame,
   type Box,
@@ -6,7 +18,7 @@ import {
   normalizeBox,
 } from "./Frame";
 import { adjustRectToGrid, renderGrid } from "./grid";
-import { onMount } from "svelte";
+import assets from "./assets.svelte";
 
 const gridSize = 30;
 const maxZoom = 4; // x4 the original size
@@ -74,6 +86,7 @@ function handleMouseDown(
   ev: MouseEvent,
   target?: ["frame-picker", number] | ["frame-resize", BoxResizeHandles, number]
 ) {
+  console.log("Mouse down", target);
   if (target) {
     ev.stopPropagation();
     switch (target[0]) {
@@ -219,7 +232,7 @@ function handleMouseUp() {
       if (mouseDown.boxNormalized.w * mouseDown.boxNormalized.h >= 4) {
         const newFrame: BoxedFrame = {
           box: mouseDown.boxNormalized,
-          assetUrl: "Nothing",
+          assetUrl: "",
           split: null,
         };
         frames = [...frames, newFrame];
@@ -241,6 +254,46 @@ function handleMouseUp() {
     }
   }
   mouseDown = { type: "none" };
+}
+
+async function handleClick(ev: MouseEvent, target?: ["pick-asset", number]) {
+  if (target) {
+    if (target[0] === "pick-asset") {
+      const assetData = await assets.pickAsset();
+      if (assetData) {
+        const frameIndex = target[1];
+        frames[frameIndex].assetUrl = assetData.url;
+      }
+    }
+  }
+  // if (W) {
+  //   const assetUrl = await assets.assetPicker();
+
+  //   const asset = await W.assets.userSelectAsset();
+  //   if (asset) {
+  //     console.log("HRL", asset.hrl);
+  //     console.log("Stringified HRL", stringifyHrl(asset.hrl));
+  //     console.log("Asset context", asset.context);
+  //     const info = await W.assets.assetInfo(asset);
+  //     if (info) {
+  //       const queryString = [
+  //         "view=applet-view",
+  //         "view-type=asset",
+  //         "hrl=" + stringifyHrl(asset.hrl),
+  //         asset.context ? "context=" + encodeContext(asset.context) : "",
+  //       ].join("&");
+
+  //       console.log("Info", info);
+
+  //       const iframeSrc = info.appletDevPort
+  //         ? `http://localhost:${
+  //             info.appletDevPort
+  //           }?${queryString}#${urlFromAppletHash(info.appletHash)}`
+  //         : `${appletOrigin(info.appletHash)}?${queryString}`;
+  //       console.log(iframeSrc);
+  //     }
+  //   }
+  // }
 }
 
 function handleWheel(ev: WheelEvent) {
@@ -270,7 +323,14 @@ function setZoom(newZoom: number, centerX?: number, centerY?: number) {
 // ███████╗██║     ██║     ███████╗╚██████╗   ██║   ███████║
 // ╚══════╝╚═╝     ╚═╝     ╚══════╝ ╚═════╝   ╚═╝   ╚══════╝
 
-function init() {
+let W = $state<WeaveClient | null>(null);
+function init(weaveClient?: WeaveClient) {
+  if (weaveClient) {
+    weaveClient.assets.userSelectAsset;
+    W = weaveClient;
+    assets.init(weaveClient);
+  }
+
   onMount(() => {
     console.log("GRI CHANGED", gridEl);
     if (gridEl) {
@@ -337,6 +397,7 @@ function screenToCanvasPos(x: number, y: number) {
 const state = {
   init,
   ev: {
+    click: handleClick,
     mousedown: handleMouseDown,
     mousemove: handleMouseMove,
     mouseup: handleMouseUp,

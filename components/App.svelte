@@ -4,10 +4,12 @@
 
   let { weaveClient }: { weaveClient?: WeaveClient } = $props();
   import S, { type BoxResizeHandles } from "../lib/state.svelte";
+  import assets from "../lib/assets.svelte";
   import { type Box } from "../lib/Frame";
   import ResizeHandle from "./ResizeHandle.svelte";
+  import Coral from "./Coral.svelte";
 
-  S.init();
+  S.init(weaveClient);
 
   function boxSizeIsEnough(box: Box) {
     return box.w * box.h >= 4;
@@ -15,7 +17,6 @@
 </script>
 
 <div
-  onmousedown={S.ev.mousedown}
   onmouseup={S.ev.mouseup}
   onmousemove={S.ev.mousemove}
   onwheel={S.ev.wheel}
@@ -25,7 +26,9 @@
       S.currentAction.type === "pan" || S.currentAction.type === "moveFrame",
   })}
 >
+  <!-- <Coral /> -->
   <canvas
+    onmousedown={S.ev.mousedown}
     class="h-full w-full absolute top-0 left-0 z-10"
     bind:this={S.ref.grid}
   ></canvas>
@@ -44,7 +47,7 @@
           transform: translateX(${box.x}px) translateY(${box.y}px);
         `}
         class={cx(
-          "z-30  b-2 absolute top-0 left-0 rounded-md bg-sky-500/10 b-sky-500/60"
+          "z-30  b-2 absolute top-0 left-0 rounded-md bg-sky-500/10 b-sky-500/60 pointer-events-none"
         )}
       ></div>
     {:else if S.currentAction.type === "createFrame"}
@@ -57,10 +60,13 @@
           height: ${box.h}px;
           transform: translateX(${box.x}px) translateY(${box.y}px);
         `}
-        class={cx("z-50  b-2  absolute top-0 left-0 rounded-md", {
-          "bg-sky-500/10 b-sky-500/60": !boxValid,
-          "bg-sky-500/50 b-sky-500/100": boxValid,
-        })}
+        class={cx(
+          "z-50  b-2  absolute top-0 left-0 rounded-md pointer-events-none",
+          {
+            "bg-sky-500/10 b-sky-500/60": !boxValid,
+            "bg-sky-500/50 b-sky-500/100": boxValid,
+          }
+        )}
       ></div>
     {/if}
     {#each S.frames as frame, i (i)}
@@ -84,14 +90,55 @@
         `}
         class="z-40 bg-gray-100 b-gray-300 absolute top-0 left-0 rounded-md shadow-md"
       >
-        {frame.assetUrl}
+        {#if frame.assetUrl}
+          {@const asset = assets.V[frame.assetUrl]}
+          {#if asset}
+            <iframe
+              title="Asset"
+              class="absolute top-0 z-30 left-0 h-full w-full bg-red-500/50"
+              src={assets.V[frame.assetUrl]?.iframeSrc}
+            ></iframe>
+          {:else}
+            Loading...
+          {/if}
+        {:else}
+          <button
+            class="h-full w-full z-30 absolute top-0 left-0 flexcc bg-blue-500/50"
+            onclick={(ev) => S.ev.click(ev, ["pick-asset", i])}
+            >Select asset</button
+          >
+        {/if}
 
         <button
           aria-label="Pick frame up"
           onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", i])}
-          class="absolute left-1/2 bottom-full -translate-x-1/2 bg-black/70 rounded-t-md cursor-move"
-          style={`height: ${S.zGridSize}px; width: ${S.zGridSize}px`}
-        ></button>
+          class="absolute left-1/2 bottom-full -translate-x-1/2 text-black/80 bg-gray-200 rounded-t-md cursor-move whitespace-nowrap"
+          style={`height: ${S.gridSize}px; min-width: ${S.gridSize}px`}
+        >
+          {#if frame.assetUrl}
+            {@const asset = assets.V[frame.assetUrl]}
+            {#if asset}
+              <div class="flexcc px1">
+                <div class="w6 h6 p1 mr1">
+                  <img
+                    alt="Asset icon"
+                    src={asset.info.icon_src}
+                    class="w-full w-full pointer-events-none"
+                  />
+                </div>
+                {console.log("ASSET INFO", asset.info.name)}
+                <span class="text-sm mr1">{asset.info.name}</span>
+                <!-- <div
+                  class="bg-black/10 shadow-inner px1 text-xs text-black/40 text-mono rounded-md"
+                >
+                  kando.lrl/test
+                </div> -->
+              </div>
+            {:else}
+              Loading...
+            {/if}
+          {/if}
+        </button>
         <!-- Right handle -->
 
         <ResizeHandle pos="t" onMouseDown={resizeHandler} />
