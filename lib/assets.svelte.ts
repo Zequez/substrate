@@ -8,6 +8,7 @@ import {
   type AssetInfo,
   type AssetLocationAndInfo,
   type AppletHash,
+  stringifyWal,
 } from "@theweave/api";
 import {
   urlFromAppletHash,
@@ -20,50 +21,54 @@ type AssetData = {
   wal: WAL;
   hash: AppletHash;
   iframeSrc: string;
-  url: string;
   info: AssetInfo;
+  key: string;
 };
 
 let assetsMap = $state<Record<string, AssetData>>({});
 
 function init(weaveClient: WeaveClient) {
   W = weaveClient;
+
+  // $effect(() => {
+  //   console.log("Assets", JSON.stringify(assetsMap, null, 2));
+  // });
 }
 
-async function loadAsset(url: string) {
-  const data = assetsMap[url];
+async function loadAsset(key: string) {
+  const data = assetsMap[key];
   if (data) {
     return data;
   } else {
-    const wal = deStringifyWal(url);
-    return await cacheAsset(url, wal);
+    const wal = deStringifyWal(key);
+    return await cacheAsset(key, wal);
   }
 }
 
 async function pickAsset() {
   const wal = await W.assets.userSelectAsset();
   if (wal) {
-    const url = stringifyHrl(wal.hrl);
+    const url = stringifyWal(wal);
     return await cacheAsset(url, wal);
   } else {
     return null;
   }
 }
 
-async function cacheAsset(url: string, wal: WAL) {
+async function cacheAsset(key: string, wal: WAL) {
   const locAndInfo = await W.assets.assetInfo(wal);
   if (locAndInfo) {
     const data: AssetData = {
-      url,
       wal,
       hash: locAndInfo.appletHash,
       iframeSrc: assetInfoToIframeSrc(wal, locAndInfo),
       info: locAndInfo.assetInfo,
+      key,
     };
-    assetsMap[data.url] = data;
+    assetsMap[key] = data;
     return data;
   } else {
-    console.log("No info gotten", url);
+    console.log("No info gotten", key);
     return false;
   }
 }

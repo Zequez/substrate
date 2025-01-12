@@ -163,14 +163,8 @@ function handleMouseMove(ev: MouseEvent) {
     }
     case "resizeFrame": {
       const frame = frames[mouseDown.i];
-      // let minX = -Infinity;
-      // let maxX = Infinity;
-      // let minY = -Infinity;
-      // let maxY = Infinity;
       let deltaX = mouseGridX - mouseDown.startX;
       let deltaY = mouseGridY - mouseDown.startY;
-      // mouseGridX - mouseDown.startX
-      // mouseGridY - mouseDown.startY;
       if (mouseDown.pos === "l") {
         mouseDown.newBox = {
           ...frame.box,
@@ -262,38 +256,10 @@ async function handleClick(ev: MouseEvent, target?: ["pick-asset", number]) {
       const assetData = await assets.pickAsset();
       if (assetData) {
         const frameIndex = target[1];
-        frames[frameIndex].assetUrl = assetData.url;
+        frames[frameIndex].assetUrl = assetData.key;
       }
     }
   }
-  // if (W) {
-  //   const assetUrl = await assets.assetPicker();
-
-  //   const asset = await W.assets.userSelectAsset();
-  //   if (asset) {
-  //     console.log("HRL", asset.hrl);
-  //     console.log("Stringified HRL", stringifyHrl(asset.hrl));
-  //     console.log("Asset context", asset.context);
-  //     const info = await W.assets.assetInfo(asset);
-  //     if (info) {
-  //       const queryString = [
-  //         "view=applet-view",
-  //         "view-type=asset",
-  //         "hrl=" + stringifyHrl(asset.hrl),
-  //         asset.context ? "context=" + encodeContext(asset.context) : "",
-  //       ].join("&");
-
-  //       console.log("Info", info);
-
-  //       const iframeSrc = info.appletDevPort
-  //         ? `http://localhost:${
-  //             info.appletDevPort
-  //           }?${queryString}#${urlFromAppletHash(info.appletHash)}`
-  //         : `${appletOrigin(info.appletHash)}?${queryString}`;
-  //       console.log(iframeSrc);
-  //     }
-  //   }
-  // }
 }
 
 function handleWheel(ev: WheelEvent) {

@@ -95,7 +95,7 @@
           {#if asset}
             <iframe
               title="Asset"
-              class="absolute top-0 z-30 left-0 h-full w-full bg-red-500/50"
+              class="absolute top-0 z-30 left-0 h-full w-full rounded-md"
               src={assets.V[frame.assetUrl]?.iframeSrc}
             ></iframe>
           {:else}
@@ -103,7 +103,7 @@
           {/if}
         {:else}
           <button
-            class="h-full w-full z-30 absolute top-0 left-0 flexcc bg-blue-500/50"
+            class="h-full w-full z-30 absolute top-0 left-0 flexcc"
             onclick={(ev) => S.ev.click(ev, ["pick-asset", i])}
             >Select asset</button
           >
@@ -112,7 +112,7 @@
         <button
           aria-label="Pick frame up"
           onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", i])}
-          class="absolute left-1/2 bottom-full -translate-x-1/2 text-black/80 bg-gray-200 rounded-t-md cursor-move whitespace-nowrap"
+          class="absolute left-1/2 bottom-full -translate-x-1/2 text-black/80 bg-gray-200 rounded-t-md cursor-move whitespace-nowrap b b-black/10"
           style={`height: ${S.gridSize}px; min-width: ${S.gridSize}px`}
         >
           {#if frame.assetUrl}
