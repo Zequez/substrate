@@ -1,20 +1,42 @@
 <script lang="ts">
   import cx from "classnames";
   import { WeaveClient } from "@theweave/api";
+  import { SimpleHolochain } from "generic-dna/lib/src";
 
-  let { weaveClient }: { weaveClient?: WeaveClient } = $props();
+  let {
+    weaveClient,
+    genericZomeClient,
+  }: { weaveClient?: WeaveClient; genericZomeClient: SimpleHolochain } =
+    $props();
   import S, { type BoxResizeHandles } from "../lib/state.svelte";
   import assets from "../lib/assets.svelte";
+  import profiles from "../lib/profiles.svelte";
   import { type Box } from "../lib/Frame";
   import ResizeHandle from "./ResizeHandle.svelte";
+  import framesBackend from "../lib/frames-store/frames.svelte";
   import Coral from "./Coral.svelte";
+  // import GenericDnaSandbox from "./GenericDnaSandbox.svelte";
 
-  S.init(weaveClient);
+  S.init(weaveClient, genericZomeClient);
+  // framesBackend.init(weaveClient);
 
   function boxSizeIsEnough(box: Box) {
     return box.w * box.h >= 4;
   }
 </script>
+
+<!-- <GenericDnaInspector /> -->
+<!-- <GenericDnaSandbox H={genericZomeClient} /> -->
+
+<div class="absolute top-0 right-0 bg-blue-500 rounded-bl-md">
+  {#each Object.entries(profiles.participantsProfiles) as [agent, profile]}
+    {#if profile === "unknown" || profile === "none"}
+      {agent.slice(0, 5)}
+    {:else}
+      {profile.nickname}
+    {/if}
+  {/each}
+</div>
 
 <div
   onmouseup={S.ev.mouseup}
@@ -69,19 +91,21 @@
         )}
       ></div>
     {/if}
-    {#each S.frames as frame, i (i)}
+    {#each Object.entries(S.frames) as [uuid, frameWrapper] (uuid)}
+      {@const frame = frameWrapper.value}
       {@const box =
-        S.currentAction.type === "moveFrame" && i === S.currentAction.i
+        S.currentAction.type === "moveFrame" && uuid === S.currentAction.uuid
           ? S.boxInPx({
               ...frame.box,
               x: frame.box.x + S.currentAction.boxDelta.x,
               y: frame.box.y + S.currentAction.boxDelta.y,
             })
-          : S.currentAction.type === "resizeFrame" && i === S.currentAction.i
+          : S.currentAction.type === "resizeFrame" &&
+              uuid === S.currentAction.uuid
             ? S.boxInPx(S.currentAction.newBox)
             : S.boxInPx(frame.box)}
       {@const resizeHandler = (ev: MouseEvent, p: BoxResizeHandles) =>
-        S.ev.mousedown(ev, ["frame-resize", p, i])}
+        S.ev.mousedown(ev, ["frame-resize", p, uuid])}
       <div
         style={`
           width: ${box.w}px;
@@ -104,14 +128,14 @@
         {:else}
           <button
             class="h-full w-full z-30 absolute top-0 left-0 flexcc"
-            onclick={(ev) => S.ev.click(ev, ["pick-asset", i])}
+            onclick={(ev) => S.ev.click(ev, ["pick-asset", uuid])}
             >Select asset</button
           >
         {/if}
 
         <button
           aria-label="Pick frame up"
-          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", i])}
+          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", uuid])}
           class="absolute left-1/2 bottom-full -translate-x-1/2 text-black/80 bg-gray-200 rounded-t-md cursor-move whitespace-nowrap b b-black/10"
           style={`height: ${S.gridSize}px; min-width: ${S.gridSize}px`}
         >

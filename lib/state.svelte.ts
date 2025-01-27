@@ -1,24 +1,13 @@
-import {
-  WeaveClient,
-  weaveUrlToLocation,
-  stringifyHrl,
-  encodeContext,
-  type WAL,
-} from "@theweave/api";
-import {
-  urlFromAppletHash,
-  appletOrigin,
-} from "@theweave/elements/dist/utils.js";
+import { WeaveClient } from "@theweave/api";
+import { SimpleHolochain } from "generic-dna/lib/src";
 import { onMount } from "svelte";
-import {
-  type BoxedFrame,
-  normalizeFrame,
-  type Box,
-  rollDownFrame,
-  normalizeBox,
-} from "./Frame";
-import { adjustRectToGrid, renderGrid } from "./grid";
+import { type BoxedFrame, type Box, normalizeBox } from "./Frame";
+import { renderGrid } from "./grid";
+
+// Sub-states
+import framesStore from "./frames-store";
 import assets from "./assets.svelte";
+import profiles from "./profiles.svelte";
 
 const gridSize = 30;
 const maxZoom = 4; // x4 the original size
@@ -42,7 +31,7 @@ let zPanX = $derived(panX * zoom);
 let zPanY = $derived(panY * zoom);
 let zGridSize = $derived(gridSize * zoom);
 
-let frames = $state<BoxedFrame[]>([]);
+let frames: ReturnType<typeof framesStore.frames> = null!;
 
 //  █████╗  ██████╗████████╗██╗ ██████╗ ███╗   ██╗███████╗
 // ██╔══██╗██╔════╝╚══██╔══╝██║██╔═══██╗████╗  ██║██╔════╝
@@ -67,7 +56,7 @@ type MouseDownActions =
   | { type: "createFrame"; box: Box; boxNormalized: Box }
   | {
       type: "moveFrame";
-      i: number;
+      uuid: string;
       startX: number;
       startY: number;
       boxDelta: { x: number; y: number };
@@ -75,7 +64,7 @@ type MouseDownActions =
   | {
       type: "resizeFrame";
       pos: BoxResizeHandles;
-      i: number;
+      uuid: string;
       startX: number;
       startY: number;
       newBox: Box;
@@ -84,7 +73,7 @@ let mouseDown = $state<MouseDownActions>({ type: "none" });
 
 function handleMouseDown(
   ev: MouseEvent,
-  target?: ["frame-picker", number] | ["frame-resize", BoxResizeHandles, number]
+  target?: ["frame-picker", string] | ["frame-resize", BoxResizeHandles, string]
 ) {
   console.log("Mouse down", target);
   if (target) {
@@ -94,7 +83,7 @@ function handleMouseDown(
         const [startX, startY] = mouseToGridPos(ev.clientX, ev.clientY);
         mouseDown = {
           type: "moveFrame",
-          i: target[1],
+          uuid: target[1],
           startX,
           startY,
           boxDelta: {
@@ -109,10 +98,10 @@ function handleMouseDown(
         mouseDown = {
           type: "resizeFrame",
           pos: target[1],
-          i: target[2],
+          uuid: target[2],
           startX,
           startY,
-          newBox: frames[target[2]].box,
+          newBox: frames.all[target[2]].value.box,
         };
       }
     }
@@ -162,7 +151,7 @@ function handleMouseMove(ev: MouseEvent) {
       break;
     }
     case "resizeFrame": {
-      const frame = frames[mouseDown.i];
+      const frame = frames.all[mouseDown.uuid].value;
       let deltaX = mouseGridX - mouseDown.startX;
       let deltaY = mouseGridY - mouseDown.startY;
       if (mouseDown.pos === "l") {
@@ -229,19 +218,26 @@ function handleMouseUp() {
           assetUrl: "",
           split: null,
         };
-        frames = [...frames, newFrame];
+        frames.create(newFrame);
       }
       break;
     }
     case "moveFrame": {
-      const frame = frames[mouseDown.i];
-      frame.box.x += mouseDown.boxDelta.x;
-      frame.box.y += mouseDown.boxDelta.y;
+      const frame = frames.all[mouseDown.uuid].value;
+      frames.update(mouseDown.uuid, {
+        box: {
+          ...frame.box,
+          x: frame.box.x + mouseDown.boxDelta.x,
+          y: frame.box.y + mouseDown.boxDelta.y,
+        },
+      });
       break;
     }
     case "resizeFrame": {
-      const frame = frames[mouseDown.i];
-      frame.box = mouseDown.newBox;
+      // const frame = frames[mouseDown.uuid];
+      frames.update(mouseDown.uuid, {
+        box: mouseDown.newBox,
+      });
     }
     default: {
       console.log("Nothing to do on mouse up for", mouseDown.type);
@@ -250,13 +246,14 @@ function handleMouseUp() {
   mouseDown = { type: "none" };
 }
 
-async function handleClick(ev: MouseEvent, target?: ["pick-asset", number]) {
+async function handleClick(ev: MouseEvent, target?: ["pick-asset", string]) {
   if (target) {
     if (target[0] === "pick-asset") {
       const assetData = await assets.pickAsset();
       if (assetData) {
-        const frameIndex = target[1];
-        frames[frameIndex].assetUrl = assetData.key;
+        frames.update(target[1], {
+          assetUrl: assetData.key,
+        });
       }
     }
   }
@@ -290,21 +287,29 @@ function setZoom(newZoom: number, centerX?: number, centerY?: number) {
 // ╚══════╝╚═╝     ╚═╝     ╚══════╝ ╚═════╝   ╚═╝   ╚══════╝
 
 let W = $state<WeaveClient | null>(null);
-function init(weaveClient?: WeaveClient) {
-  if (weaveClient) {
-    weaveClient.assets.userSelectAsset;
-    W = weaveClient;
-    assets.init(weaveClient);
-  }
+function init(weaveClient: WeaveClient, genericZomeClient: SimpleHolochain) {
+  W = weaveClient;
+
+  if (W.renderInfo.type !== "applet-view") throw "Not applet view";
+
+  const assetsCleanup = assets.init(weaveClient);
+  framesStore.init({
+    genericZomeClient,
+    appClient: W.renderInfo.appletClient,
+    weaveClient,
+  });
+  frames = framesStore.frames();
+  const profilesCleanup = profiles.init(weaveClient);
 
   onMount(() => {
     console.log("GRI CHANGED", gridEl);
+    let frameId: any;
     if (gridEl) {
       ctx = gridEl.getContext("2d")!;
       function initializeCanvas() {
         const box = gridEl.getBoundingClientRect();
         if (box.width === 0 || box.height === 0) {
-          requestAnimationFrame(initializeCanvas); // Retry on the next frame
+          frameId = requestAnimationFrame(initializeCanvas); // Retry on the next frame
         } else {
           width = box.width;
           height = box.height;
@@ -317,6 +322,14 @@ function init(weaveClient?: WeaveClient) {
 
       initializeCanvas(); // Start initialization
     }
+
+    return () => {
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
+      assetsCleanup();
+      profilesCleanup();
+    };
   });
 
   $effect(() => {
@@ -403,7 +416,7 @@ const state = {
     },
   },
   get frames() {
-    return frames;
+    return frames.all;
   },
   gridToPx: (n: number) => n * gridSize,
   boxInPx: (box: Box): Box => ({

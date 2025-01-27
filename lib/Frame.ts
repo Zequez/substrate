@@ -13,6 +13,15 @@ export type BoxedFrame = {
   split: Split;
 };
 
+type ThingOrigin = {
+  agent: string;
+  networkUpdatedAt: Date | null;
+  networkCreatedAt: Date | null;
+  locallyCreatedAt: Date | null;
+  locallyUpdatedAt: Date | null;
+  networkId: string;
+};
+
 export type SplitConfig = [number, "h" | "v"];
 export type Split = [SplitConfig, SplitFrame] | null;
 
@@ -21,17 +30,17 @@ export type SplitFrame = {
   assetUrl: string;
 };
 
-export const EXAMPLE: BoxedFrame = {
-  box: { x: 3, y: 3, h: 12, w: 12 },
-  assetUrl: "arsars",
-  split: [
-    [0.99, "v"],
-    {
-      assetUrl: "Potato",
-      split: [[0.6, "h"], { assetUrl: "arsars", split: null }],
-    },
-  ],
-};
+// export const EXAMPLE: BoxedFrame = {
+//   box: { x: 3, y: 3, h: 12, w: 12 },
+//   assetUrl: "arsars",
+//   split: [
+//     [0.99, "v"],
+//     {
+//       assetUrl: "Potato",
+//       split: [[0.6, "h"], { assetUrl: "arsars", split: null }],
+//     },
+//   ],
+// };
 
 export type ComputedFrame = {
   box: Box;

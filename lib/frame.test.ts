@@ -1,24 +1,37 @@
 import { type BoxedFrame, computeFrames } from "./Frame";
+import { it, expect } from "vitest";
 
-export const EXAMPLE: BoxedFrame = {
+const EXAMPLE: BoxedFrame = {
   box: { x: 3, y: 3, h: 12, w: 12 },
   assetUrl: "arsars",
   split: [
-    [4, "v"],
+    [0.5, "h"],
     {
       assetUrl: "Potato",
-      split: null,
+      split: [
+        [0.25, "v"],
+        {
+          assetUrl: "Foo",
+          split: null,
+        },
+      ],
     },
   ],
 };
 
-expect(computeFrames(EXAMPLE)).toEq([
-  {
-    box: { x: 3, y: 3, h: 4, w: 12 },
-    assetUrl: "arsars",
-  },
-  {
-    box: { x: 3, y: 7, h: 8, w: 12 },
-    assetUrl: "Potato",
-  },
-]);
+it("should compute the final frames", () => {
+  expect(computeFrames(EXAMPLE)).toEqual([
+    {
+      box: { x: 3, y: 3, h: 6, w: 12 },
+      assetUrl: "arsars",
+    },
+    {
+      box: { x: 3, y: 9, h: 6, w: 3 },
+      assetUrl: "Potato",
+    },
+    {
+      box: { x: 6, y: 9, h: 6, w: 9 },
+      assetUrl: "Foo",
+    },
+  ]);
+});

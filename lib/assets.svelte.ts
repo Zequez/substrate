@@ -33,6 +33,7 @@ function init(weaveClient: WeaveClient) {
   // $effect(() => {
   //   console.log("Assets", JSON.stringify(assetsMap, null, 2));
   // });
+  return () => {};
 }
 
 async function loadAsset(key: string) {
