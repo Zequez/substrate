@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { type BoxResizeHandles } from "../lib/state.svelte";
+  import { type BoxResizeHandles } from "../lib/stores";
   const props: {
     pos: BoxResizeHandles;
     onMouseDown: (e: MouseEvent, pos: BoxResizeHandles) => void;

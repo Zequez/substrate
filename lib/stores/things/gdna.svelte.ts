@@ -9,7 +9,8 @@ import {
   type Thing,
   LinkDirection,
 } from "generic-dna/lib/src";
-import LS from "../localStorageSyncedState.svelte";
+import clients from "../../clients";
+import LS from "../ls-synced.svelte";
 
 type Wrapper = {
   type: string;
@@ -40,12 +41,6 @@ type NetworkAction = {
 // type NetworkEvent = {
 //   type: 'discovered'
 // }
-
-let H: SimpleHolochain = $state<SimpleHolochain>(null!);
-
-function init(genericZomeClient: SimpleHolochain) {
-  H = genericZomeClient;
-}
 
 function things<T extends Wrapper>(anchorNodeId: string) {
   let fetchedTimestamp = $state<number>(0);
@@ -94,14 +89,14 @@ function things<T extends Wrapper>(anchorNodeId: string) {
   const ANCHOR_NODE = { type: "Anchor" as "Anchor", id: anchorNodeId };
 
   onMount(() => {
-    const unsub = H.subscribeToNode(ANCHOR_NODE, async (status) => {
+    const unsub = clients.gdna.subscribeToNode(ANCHOR_NODE, async (status) => {
       console.log(`ANCHOR NODE ${anchorNodeId}`, status);
       if (status.status === "complete") {
         const originalThingsHashes = status.value.linkedNodeIds
           .filter((node) => node.node_id.type === "Thing")
           .map((node) => node.node_id.id as HoloHash);
 
-        const allThings = await H!.getThings(originalThingsHashes);
+        const allThings = await clients.gdna.getThings(originalThingsHashes);
 
         const allThingsWithOriginalId = allThings.map((t, i) => {
           if (t) {
@@ -145,7 +140,7 @@ function things<T extends Wrapper>(anchorNodeId: string) {
       return;
     }
 
-    const thing = await H.createThing(JSON.stringify(content), [
+    const thing = await clients.gdna.createThing(JSON.stringify(content), [
       {
         direction: LinkDirection.From,
         node_id: ANCHOR_NODE,
@@ -172,7 +167,7 @@ function things<T extends Wrapper>(anchorNodeId: string) {
 
     const currentThing = things[uuid];
     if (!currentThing) throw "Trying to update non-existent thing";
-    const thing = await H.updateThing(
+    const thing = await clients.gdna.updateThing(
       decodeHashFromBase64(currentThing.id),
       JSON.stringify(content)
     );
@@ -226,6 +221,5 @@ function things<T extends Wrapper>(anchorNodeId: string) {
 }
 
 export default {
-  init,
   things,
 };

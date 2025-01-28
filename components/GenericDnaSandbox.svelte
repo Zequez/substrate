@@ -1,10 +1,6 @@
 <script lang="ts">
   import {
-    // type AsyncStatus,
     LinkDirection,
-    // NodeId,
-    // NodeIdAndTag,
-    // NodeStoreContent,
     SimpleHolochain,
     type Thing,
   } from "generic-dna/lib/src";
@@ -15,7 +11,7 @@
     type HoloHash,
   } from "@holochain/client";
   import cx from "classnames";
-  import LS from "../lib/localStorageSyncedState.svelte";
+  import LS from "../lib/stores/ls-synced.svelte";
   import { hashEq, hashSlice, relativeTimeFormat } from "../lib/utils";
 
   const { H }: { H: SimpleHolochain } = $props();

@@ -1,11 +1,9 @@
-import { WeaveClient } from "@theweave/api";
-import { SimpleHolochain } from "generic-dna/lib/src";
 import { onMount } from "svelte";
-import { type BoxedFrame, type Box, normalizeBox } from "./Frame";
-import { renderGrid } from "./grid";
+import { type BoxedFrame, type Box, normalizeBox } from "../Frame";
+import { renderGrid } from "../grid";
 
 // Sub-states
-import framesStore from "./frames-store";
+import thingsStore from "./things";
 import assets from "./assets.svelte";
 import profiles from "./profiles.svelte";
 
@@ -31,7 +29,69 @@ let zPanX = $derived(panX * zoom);
 let zPanY = $derived(panY * zoom);
 let zGridSize = $derived(gridSize * zoom);
 
-let frames: ReturnType<typeof framesStore.frames> = null!;
+type FramesStore = ReturnType<
+  typeof thingsStore.typeOfThing<"BoxedFrame", BoxedFrame>
+>;
+
+let frames = $state<FramesStore>(null!);
+
+// ██╗███╗   ██╗██╗████████╗
+// ██║████╗  ██║██║╚══██╔══╝
+// ██║██╔██╗ ██║██║   ██║
+// ██║██║╚██╗██║██║   ██║
+// ██║██║ ╚████║██║   ██║
+// ╚═╝╚═╝  ╚═══╝╚═╝   ╚═╝
+
+function init() {
+  frames = thingsStore.typeOfThing<"BoxedFrame", BoxedFrame>(
+    "BoxedFrame",
+    "BOXED_FRAME"
+  );
+  const profilesCleanup = profiles.init();
+
+  onMount(() => {
+    console.log("GRI CHANGED", gridEl);
+    let frameId: any;
+    if (gridEl) {
+      ctx = gridEl.getContext("2d")!;
+      function initializeCanvas() {
+        const box = gridEl.getBoundingClientRect();
+        if (box.width === 0 || box.height === 0) {
+          frameId = requestAnimationFrame(initializeCanvas); // Retry on the next frame
+        } else {
+          width = box.width;
+          height = box.height;
+          panX = width / 2;
+          panY = height / 2;
+          gridEl.width = width;
+          gridEl.height = height;
+        }
+      }
+
+      initializeCanvas(); // Start initialization
+    }
+
+    return () => {
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
+      profilesCleanup();
+    };
+  });
+
+  $effect(() => {
+    if (!ctx) return;
+    renderGrid(ctx, {
+      width,
+      height,
+      zoom,
+      panX,
+      panY,
+      color: "#fff3",
+      size: gridSize,
+    });
+  });
+}
 
 //  █████╗  ██████╗████████╗██╗ ██████╗ ███╗   ██╗███████╗
 // ██╔══██╗██╔════╝╚══██╔══╝██║██╔═══██╗████╗  ██║██╔════╝
@@ -277,73 +337,6 @@ function setZoom(newZoom: number, centerX?: number, centerY?: number) {
     panY += (screenPos[1] * zoomDelta) / processedZoom;
   }
   zoom = processedZoom;
-}
-
-// ███████╗███████╗███████╗███████╗ ██████╗████████╗███████╗
-// ██╔════╝██╔════╝██╔════╝██╔════╝██╔════╝╚══██╔══╝██╔════╝
-// █████╗  █████╗  █████╗  █████╗  ██║        ██║   ███████╗
-// ██╔══╝  ██╔══╝  ██╔══╝  ██╔══╝  ██║        ██║   ╚════██║
-// ███████╗██║     ██║     ███████╗╚██████╗   ██║   ███████║
-// ╚══════╝╚═╝     ╚═╝     ╚══════╝ ╚═════╝   ╚═╝   ╚══════╝
-
-let W = $state<WeaveClient | null>(null);
-function init(weaveClient: WeaveClient, genericZomeClient: SimpleHolochain) {
-  W = weaveClient;
-
-  if (W.renderInfo.type !== "applet-view") throw "Not applet view";
-
-  const assetsCleanup = assets.init(weaveClient);
-  framesStore.init({
-    genericZomeClient,
-    appClient: W.renderInfo.appletClient,
-    weaveClient,
-  });
-  frames = framesStore.frames();
-  const profilesCleanup = profiles.init(weaveClient);
-
-  onMount(() => {
-    console.log("GRI CHANGED", gridEl);
-    let frameId: any;
-    if (gridEl) {
-      ctx = gridEl.getContext("2d")!;
-      function initializeCanvas() {
-        const box = gridEl.getBoundingClientRect();
-        if (box.width === 0 || box.height === 0) {
-          frameId = requestAnimationFrame(initializeCanvas); // Retry on the next frame
-        } else {
-          width = box.width;
-          height = box.height;
-          panX = width / 2;
-          panY = height / 2;
-          gridEl.width = width;
-          gridEl.height = height;
-        }
-      }
-
-      initializeCanvas(); // Start initialization
-    }
-
-    return () => {
-      if (frameId) {
-        cancelAnimationFrame(frameId);
-      }
-      assetsCleanup();
-      profilesCleanup();
-    };
-  });
-
-  $effect(() => {
-    if (!ctx) return;
-    renderGrid(ctx, {
-      width,
-      height,
-      zoom,
-      panX,
-      panY,
-      color: "#fff3",
-      size: gridSize,
-    });
-  });
 }
 
 // ██╗   ██╗████████╗██╗██╗     ███████╗

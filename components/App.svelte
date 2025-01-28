@@ -1,24 +1,14 @@
 <script lang="ts">
   import cx from "classnames";
-  import { WeaveClient } from "@theweave/api";
-  import { SimpleHolochain } from "generic-dna/lib/src";
-
-  let {
-    weaveClient,
-    genericZomeClient,
-  }: { weaveClient?: WeaveClient; genericZomeClient: SimpleHolochain } =
-    $props();
-  import S, { type BoxResizeHandles } from "../lib/state.svelte";
-  import assets from "../lib/assets.svelte";
-  import profiles from "../lib/profiles.svelte";
+  import S, { type BoxResizeHandles } from "../lib/stores/main.svelte";
+  import assets from "../lib/stores/assets.svelte";
+  import profiles from "../lib/stores/profiles.svelte";
   import { type Box } from "../lib/Frame";
   import ResizeHandle from "./ResizeHandle.svelte";
-  import framesBackend from "../lib/frames-store/frames.svelte";
-  import Coral from "./Coral.svelte";
+  // import Coral from "./Coral.svelte";
   // import GenericDnaSandbox from "./GenericDnaSandbox.svelte";
 
-  S.init(weaveClient, genericZomeClient);
-  // framesBackend.init(weaveClient);
+  S.init();
 
   function boxSizeIsEnough(box: Box) {
     return box.w * box.h >= 4;

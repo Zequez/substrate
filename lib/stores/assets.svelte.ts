@@ -1,6 +1,4 @@
 import {
-  WeaveClient,
-  weaveUrlToLocation,
   stringifyHrl,
   deStringifyWal,
   encodeContext,
@@ -14,8 +12,7 @@ import {
   urlFromAppletHash,
   appletOrigin,
 } from "@theweave/elements/dist/utils.js";
-
-let W = $state<WeaveClient>(null!);
+import clients from "../clients";
 
 type AssetData = {
   wal: WAL;
@@ -26,15 +23,6 @@ type AssetData = {
 };
 
 let assetsMap = $state<Record<string, AssetData>>({});
-
-function init(weaveClient: WeaveClient) {
-  W = weaveClient;
-
-  // $effect(() => {
-  //   console.log("Assets", JSON.stringify(assetsMap, null, 2));
-  // });
-  return () => {};
-}
 
 async function loadAsset(key: string) {
   const data = assetsMap[key];
@@ -47,7 +35,7 @@ async function loadAsset(key: string) {
 }
 
 async function pickAsset() {
-  const wal = await W.assets.userSelectAsset();
+  const wal = await clients.weave.assets.userSelectAsset();
   if (wal) {
     const url = stringifyWal(wal);
     return await cacheAsset(url, wal);
@@ -57,7 +45,7 @@ async function pickAsset() {
 }
 
 async function cacheAsset(key: string, wal: WAL) {
-  const locAndInfo = await W.assets.assetInfo(wal);
+  const locAndInfo = await clients.weave.assets.assetInfo(wal);
   if (locAndInfo) {
     const data: AssetData = {
       wal,
@@ -75,7 +63,6 @@ async function cacheAsset(key: string, wal: WAL) {
 }
 
 export default {
-  init,
   get pickAsset() {
     return pickAsset;
   },

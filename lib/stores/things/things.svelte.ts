@@ -1,12 +1,3 @@
-import {
-  // type AsyncStatus,
-  LinkDirection,
-  // NodeId,
-  // NodeIdAndTag,
-  // NodeStoreContent,
-  SimpleHolochain,
-  type Thing,
-} from "generic-dna/lib/src";
 import { onMount } from "svelte";
 import {
   encodeHashToBase64,
@@ -15,60 +6,55 @@ import {
   type AppClient,
 } from "@holochain/client";
 import { WeaveClient } from "@theweave/api";
-import { type BoxedFrame } from "../Frame";
+import { type BoxedFrame } from "../../Frame";
 import LS from "./local.svelte";
 import GDNA from "./gdna.svelte";
+import clients from "../../clients";
 // import SYN from "./syn.svelte";
 
-let W = $state<WeaveClient | null>(null);
-let H = $state<SimpleHolochain | null>(null);
-let currentAgent = $state<string>(null!);
+type ThingWrapped<T extends string, K> = {
+  type: T;
+  value: K;
+  uuid: string;
+  timestamp: number;
+  createdBy: string;
+  updatedBy: null | string;
+  deleted: boolean;
+};
 
-// type AllThings = BoxedFrameThing | null;
+type StorageSystem<T> = {
+  readonly all: { [key: string]: T };
+  set: (uuid: string, val: T) => void;
+  readonly ready: boolean;
+};
 
-// type NetworkedThing = BoxedFrameThing & {
-//   thingId: HoloHash;
-// }
+/**
+ * You can define any number of storages,
+ * the first one must be synchronous and local.
+ * Changes to entries in one storage will be reflected in all asynchronously
+ * The resolved entry will be the one with the highest timestamp
+ */
 
-function init(props: {
-  appClient: AppClient;
-  weaveClient: WeaveClient;
-  genericZomeClient: SimpleHolochain;
-}) {
-  W = props.weaveClient;
-  H = props.genericZomeClient;
-  currentAgent = encodeHashToBase64(props.appClient.myPubKey);
-  GDNA.init(H);
-}
+function typeOfThing<const T extends string, K>(
+  thingType: T,
+  storageKey: string
+) {
+  type $ThingWrapped = ThingWrapped<T, K>;
 
-function frames() {
-  type BoxedFrameWrapper = {
-    type: "BoxedFrame";
-    // id: number; // Used to match the thing if it's staged
-    value: BoxedFrame;
-    uuid: string;
-    timestamp: number;
-    createdBy: string;
-    updatedBy: null | string;
-    deleted: boolean;
-  };
+  let lsFrames = LS.state<$ThingWrapped>(storageKey);
+  let gdnaFrames = GDNA.things<$ThingWrapped>(storageKey);
 
-  let lsFrames = LS.state<BoxedFrameWrapper>("BOXED_FRAMES2");
-  let gdnaFrames = GDNA.things<BoxedFrameWrapper>("BOXED_FRAMES");
   // let synFrames = SYN.document<BoxedFrameWrapper>("boxedFrames");
 
-  const stores = [lsFrames, gdnaFrames];
+  const stores: StorageSystem<$ThingWrapped>[] = [lsFrames, gdnaFrames];
+  const S = stores[0];
 
   let resolvedFrames: {
     [key: string]: {
       resolution: [boolean, boolean];
-      value: BoxedFrameWrapper;
+      value: $ThingWrapped;
     };
   } = $derived.by(() => {
-    console.log(
-      "EVERYHING",
-      stores.map((s) => s.all)
-    );
     const uuids = stores
       .map((s) => Object.keys(s.all))
       .reduce((all, v) => {
@@ -86,11 +72,11 @@ function frames() {
     let resolved: {
       [key: string]: {
         resolution: [boolean, boolean];
-        value: BoxedFrameWrapper;
+        value: $ThingWrapped;
       };
     } = {};
 
-    function resolve<const T extends BoxedFrameWrapper[]>(
+    function resolve<const T extends $ThingWrapped[]>(
       ...vals: T
     ): { [I in keyof T]: boolean } {
       const maxTimestamp = Math.max(
@@ -109,9 +95,8 @@ function frames() {
 
     uuids.forEach((uuid) => {
       const storages = stores.map((s) => s.all[uuid]);
-      console.log("STORAGES", storages);
       const result = resolve(...storages);
-      let latest: BoxedFrameWrapper | null = null;
+      let latest: $ThingWrapped | null = null;
       for (let i = 0; i < result.length; ++i) {
         if (result[i]) {
           latest = storages[i];
@@ -129,9 +114,8 @@ function frames() {
     return resolved;
   });
 
-  const outputFrames = $derived.by<{ [key: string]: BoxedFrameWrapper }>(() => {
+  const outputFrames = $derived.by<{ [key: string]: $ThingWrapped }>(() => {
     const output = {};
-    console.log("Resolutions", resolvedFrames);
     for (let uuid in resolvedFrames) {
       console.log(uuid, resolvedFrames[uuid].resolution);
       output[uuid] = resolvedFrames[uuid].value;
@@ -157,29 +141,29 @@ function frames() {
     }
   }
 
-  async function create(boxedFrame: BoxedFrame) {
+  async function create(boxedFrame: K) {
     const uuid = crypto.randomUUID();
-    const boxedFrameWrapper: BoxedFrameWrapper = {
+    const boxedFrameWrapper: $ThingWrapped = {
       uuid,
-      type: "BoxedFrame",
+      type: thingType,
       timestamp: new Date().getTime(),
-      createdBy: currentAgent,
+      createdBy: clients.agentKeyB64,
       updatedBy: null,
       value: boxedFrame,
       deleted: false,
     };
-    lsFrames.set(uuid, boxedFrameWrapper);
+    S.set(uuid, boxedFrameWrapper);
   }
 
   async function update(uuid: string, boxedFrame: Partial<BoxedFrame>) {
     console.log("Updating frame", uuid, boxedFrame);
-    let storedFrame = lsFrames.all[uuid];
+    let storedFrame = S.all[uuid];
     if (!storedFrame) throw "Boxed frame not found";
-    lsFrames.set(uuid, {
+    S.set(uuid, {
       ...storedFrame,
       value: { ...storedFrame.value, ...boxedFrame },
       timestamp: new Date().getTime(),
-      updatedBy: currentAgent,
+      updatedBy: clients.agentKeyB64,
     });
   }
 
@@ -193,6 +177,5 @@ function frames() {
 }
 
 export default {
-  init,
-  frames,
+  typeOfThing,
 };
