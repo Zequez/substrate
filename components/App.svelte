@@ -105,12 +105,12 @@
         class="z-40 bg-gray-100 b-gray-300 absolute top-0 left-0 rounded-md shadow-md"
       >
         {#if frame.assetUrl}
-          {@const asset = assets.V[frame.assetUrl]}
+          {@const asset = assets.V(frame.assetUrl)}
           {#if asset}
             <iframe
               title="Asset"
               class="absolute top-0 z-30 left-0 h-full w-full rounded-md"
-              src={assets.V[frame.assetUrl]?.iframeSrc}
+              src={asset.iframeSrc}
             ></iframe>
           {:else}
             Loading...
@@ -130,7 +130,7 @@
           style={`height: ${S.gridSize}px; min-width: ${S.gridSize}px`}
         >
           {#if frame.assetUrl}
-            {@const asset = assets.V[frame.assetUrl]}
+            {@const asset = assets.V(frame.assetUrl)}
             {#if asset}
               <div class="flexcc px1">
                 <div class="w6 h6 p1 mr1">

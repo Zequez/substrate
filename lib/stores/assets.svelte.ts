@@ -24,6 +24,8 @@ type AssetData = {
 
 let assetsMap = $state<Record<string, AssetData>>({});
 
+let loaded: string[] = [];
+
 async function loadAsset(key: string) {
   const data = assetsMap[key];
   if (data) {
@@ -45,6 +47,9 @@ async function pickAsset() {
 }
 
 async function cacheAsset(key: string, wal: WAL) {
+  if (loaded.indexOf(key) !== -1) {
+    return assetsMap[key] || null;
+  }
   const locAndInfo = await clients.weave.assets.assetInfo(wal);
   if (locAndInfo) {
     const data: AssetData = {
@@ -58,7 +63,7 @@ async function cacheAsset(key: string, wal: WAL) {
     return data;
   } else {
     console.log("No info gotten", key);
-    return false;
+    return null;
   }
 }
 
@@ -69,8 +74,12 @@ export default {
   get loadAsset() {
     return loadAsset;
   },
-  get V() {
-    return assetsMap;
+  // get V() {
+  //   return assetsMap;
+  // },
+  V(key: string) {
+    loadAsset(key);
+    return assetsMap[key];
   },
 };
 
