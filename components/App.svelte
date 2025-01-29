@@ -15,7 +15,7 @@
     return box.w * box.h >= 4;
   }
 
-  function resolveFrameBox(uuid: string, frame: BoxedFrame): Box | null {
+  function resolveFrameBox(uuid: string, frame: BoxedFrame): Box {
     if (S.currentAction.type === "moveFrame") {
       if (uuid === S.currentAction.uuid) {
         return S.boxInPx({
@@ -49,19 +49,37 @@
 
 <button
   class={cx(
-    "flexcc bg-red-500 z-100 text-white transition-all transition-duration-200 text-2xl h-20 w-20 rounded-full top-4 left-1/2 -transform-x-1/2 absolute",
+    "h-20 w-20 z-100 transition-opacity absolute top-4 left-1/2 shadow-lg rounded-full -transform-x-1/2 absolute",
     {
-      "scale-90 opacity-0 pointer-events-none":
-        S.currentAction.type !== "moveFrame",
-      "scale-100 opacity-100": S.currentAction.type === "moveFrame",
-      "scale-110!":
-        S.currentAction.type === "moveFrame" && S.currentAction.trashing,
+      "opacity-0 pointer-events-none": S.currentAction.type !== "moveFrame",
+      "opacity-100": S.currentAction.type === "moveFrame",
     }
   )}
   onmousemove={(ev) => S.ev.mousemove(ev, ["trash"])}
   onmouseup={S.ev.mouseup}
 >
-  <TrashIcon />
+  <div
+    class={cx(
+      "flexcc bg-red-500 b-2 b-black/5 relative z-20 text-white transition-all transform-origin-top-right transition-duration-200 text-2xl h-full w-full rounded-full ",
+      {
+        "opacity-80": S.currentAction.type !== "moveFrame",
+        "opacity-100": S.currentAction.type === "moveFrame",
+        "scale-85! translate-x-[5px] -translate-y-[5px] skew-x-[8deg] skew-y-[8deg]":
+          S.currentAction.type === "moveFrame" && S.currentAction.trashing,
+      }
+    )}
+  >
+    <TrashIcon />
+  </div>
+  <div
+    class={cx(
+      "h-full w-full absolute z-10 top-0 left-0 bg-gray-800 b-2 b-white/10 rounded-full",
+      {
+        "opacity-80": S.currentAction.type !== "moveFrame",
+        "opacity-100": S.currentAction.type === "moveFrame",
+      }
+    )}
+  ></div>
 </button>
 
 <div
@@ -82,7 +100,7 @@
   ></canvas>
 
   <div
-    class="absolute top-0 left-0 z-20"
+    class={cx("absolute top-0 left-0 z-40")}
     style={`transform: translateX(${S.pos.zx}px) translateY(${S.pos.zy}px) scale(${S.pos.z})`}
   >
     {#if S.currentAction.type === "none"}
@@ -127,7 +145,7 @@
       {@const resizeHandler = (ev: MouseEvent, p: BoxResizeHandles) =>
         S.ev.mousedown(ev, ["frame-resize", p, uuid])}
       <div
-        class="z-40 absolute top-0 left-0"
+        class="absolute top-0 left-0 z-40"
         style={`
           width: ${box.w}px;
           height: ${box.h}px;
@@ -163,7 +181,7 @@
           <button
             aria-label="Pick frame up"
             onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", uuid])}
-            class="absolute left-1/2 bottom-full -translate-x-1/2 text-black/80 bg-gray-200 rounded-t-md cursor-move whitespace-nowrap b b-black/10"
+            class="absolute z-40 left-1/2 bottom-full -translate-x-1/2 text-black/80 bg-gray-200 rounded-t-md cursor-move whitespace-nowrap b b-black/10"
             style={`height: ${S.gridSize}px; min-width: ${S.gridSize}px`}
           >
             {#if frame.assetUrl}

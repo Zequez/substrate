@@ -17,9 +17,35 @@ let width = $state(0);
 let height = $state(0);
 let ctx = $state<CanvasRenderingContext2D>(null!);
 
-let zoom = $state(1);
-let panX = $state(0);
-let panY = $state(0);
+const zoomPanLSKey = "ZPXPY";
+const defaults = (function () {
+  const def = { zoom: 1, panX: 0, panY: 0 };
+  try {
+    return JSON.parse(localStorage.getItem(zoomPanLSKey)!) || def;
+  } catch (e) {
+    return def;
+  }
+})();
+
+let zoom = $state(defaults.zoom);
+let panX = $state(defaults.panX);
+let panY = $state(defaults.panY);
+
+console.log("DEFAULTS", defaults);
+
+$effect.root(() => {
+  let timeout: any = 0;
+  $effect(() => {
+    [zoom, panX, panY];
+    if (timeout) clearTimeout(timeout);
+    // Make dependency explicit
+    setTimeout(() => {
+      console.log("NNNNNNN", zoom, panX, panY);
+      localStorage.setItem(zoomPanLSKey, JSON.stringify({ zoom, panX, panY }));
+    }, 100);
+  });
+});
+
 let mouseX = $state(0);
 let mouseY = $state(0);
 let [mouseGridX, mouseGridY] = $derived(mouseToGridPos(mouseX, mouseY));
@@ -61,8 +87,10 @@ function init() {
         } else {
           width = box.width;
           height = box.height;
-          panX = width / 2;
-          panY = height / 2;
+          if (panX === 0 && panY === 0) {
+            panX = width / 2;
+            panY = height / 2;
+          }
           gridEl.width = width;
           gridEl.height = height;
         }
@@ -319,6 +347,7 @@ function handleMouseUp() {
       frames.update(mouseDown.uuid, {
         box: mouseDown.newBox,
       });
+      break;
     }
     default: {
       console.log("Nothing to do on mouse up for", mouseDown.type);

@@ -188,7 +188,7 @@ function things<T extends Wrapper>(anchorNodeId: string) {
     Object.values(things).reduce((all, t) => {
       all[t.content.uuid] = t.content;
       return all;
-    }, {})
+    }, {} as { [key: string]: T })
   );
 
   return {
