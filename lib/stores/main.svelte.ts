@@ -120,6 +120,9 @@ type MouseDownActions =
       startX: number;
       startY: number;
       boxDelta: { x: number; y: number };
+      trashing: boolean;
+      pickX: number;
+      pickY: number;
     }
   | {
       type: "resizeFrame";
@@ -141,15 +144,22 @@ function handleMouseDown(
     switch (target[0]) {
       case "frame-picker": {
         const [startX, startY] = mouseToGridPos(ev.clientX, ev.clientY);
+        const t = (ev.currentTarget as HTMLDivElement).parentElement!;
+        const { left, top, width, height } = t.getBoundingClientRect();
+        const pickX = (ev.clientX - left) / width;
+        const pickY = (ev.clientY - top) / height;
         mouseDown = {
           type: "moveFrame",
           uuid: target[1],
           startX,
           startY,
+          pickX,
+          pickY,
           boxDelta: {
             x: 0,
             y: 0,
           },
+          trashing: false,
         };
         break;
       }
@@ -178,7 +188,8 @@ function handleMouseDown(
   }
 }
 
-function handleMouseMove(ev: MouseEvent) {
+function handleMouseMove(ev: MouseEvent, target?: ["trash"]) {
+  console.log("Mouse move, target: ", target);
   mouseX = ev.clientX;
   mouseY = ev.clientY;
 
@@ -208,6 +219,12 @@ function handleMouseMove(ev: MouseEvent) {
       };
       mouseDown.boxDelta.x = boxDelta.x;
       mouseDown.boxDelta.y = boxDelta.y;
+
+      if (target && target[0] === "trash") {
+        mouseDown.trashing = true;
+      } else {
+        mouseDown.trashing = false;
+      }
       break;
     }
     case "resizeFrame": {
@@ -283,14 +300,18 @@ function handleMouseUp() {
       break;
     }
     case "moveFrame": {
-      const frame = frames.all[mouseDown.uuid].value;
-      frames.update(mouseDown.uuid, {
-        box: {
-          ...frame.box,
-          x: frame.box.x + mouseDown.boxDelta.x,
-          y: frame.box.y + mouseDown.boxDelta.y,
-        },
-      });
+      if (mouseDown.trashing) {
+        frames.remove(mouseDown.uuid);
+      } else {
+        const frame = frames.all[mouseDown.uuid].value;
+        frames.update(mouseDown.uuid, {
+          box: {
+            ...frame.box,
+            x: frame.box.x + mouseDown.boxDelta.x,
+            y: frame.box.y + mouseDown.boxDelta.y,
+          },
+        });
+      }
       break;
     }
     case "resizeFrame": {

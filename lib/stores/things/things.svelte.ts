@@ -117,8 +117,9 @@ function typeOfThing<const T extends string, K>(
   const outputFrames = $derived.by<{ [key: string]: $ThingWrapped }>(() => {
     const output = {};
     for (let uuid in resolvedFrames) {
-      console.log(uuid, resolvedFrames[uuid].resolution);
-      output[uuid] = resolvedFrames[uuid].value;
+      if (!resolvedFrames[uuid].value.deleted) {
+        output[uuid] = resolvedFrames[uuid].value;
+      }
     }
     return output;
   });
@@ -157,7 +158,7 @@ function typeOfThing<const T extends string, K>(
 
   async function update(uuid: string, boxedFrame: Partial<BoxedFrame>) {
     console.log("Updating frame", uuid, boxedFrame);
-    let storedFrame = S.all[uuid];
+    const storedFrame = S.all[uuid];
     if (!storedFrame) throw "Boxed frame not found";
     S.set(uuid, {
       ...storedFrame,
@@ -167,12 +168,25 @@ function typeOfThing<const T extends string, K>(
     });
   }
 
+  async function remove(uuid: string) {
+    console.log("Removing frame", uuid);
+    const storedFrame = S.all[uuid];
+    if (!storedFrame) throw "Boxed frame not found";
+    S.set(uuid, {
+      ...storedFrame,
+      timestamp: new Date().getTime(),
+      updatedBy: clients.agentKeyB64,
+      deleted: true,
+    });
+  }
+
   return {
     get all() {
       return outputFrames;
     },
     create,
     update,
+    remove,
   };
 }
 
