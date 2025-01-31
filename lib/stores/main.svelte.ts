@@ -31,8 +31,6 @@ let zoom = $state(defaults.zoom);
 let panX = $state(defaults.panX);
 let panY = $state(defaults.panY);
 
-console.log("DEFAULTS", defaults);
-
 $effect.root(() => {
   let timeout: any = 0;
   $effect(() => {
@@ -40,12 +38,10 @@ $effect.root(() => {
     if (timeout) clearTimeout(timeout);
     // Make dependency explicit
     setTimeout(() => {
-      console.log("NNNNNNN", zoom, panX, panY);
       localStorage.setItem(zoomPanLSKey, JSON.stringify({ zoom, panX, panY }));
     }, 100);
   });
 });
-
 let mouseX = $state(0);
 let mouseY = $state(0);
 let [mouseGridX, mouseGridY] = $derived(mouseToGridPos(mouseX, mouseY));
