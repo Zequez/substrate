@@ -2,6 +2,8 @@
   import cx from "classnames";
   import TrashIcon from "~icons/fa6-solid/trash";
   import CheckIcon from "~icons/fa6-solid/check";
+  import LinkIcon from "~icons/fa6-solid/link";
+  import MoveIcon from "~icons/fa6-solid/arrows-up-down-left-right";
   import SS, { type BoxResizeHandles } from "../lib/stores/main.svelte";
   import assets from "../lib/stores/assets.svelte";
   import profiles from "../lib/stores/profiles.svelte";
@@ -99,15 +101,6 @@
   </button>
 {/if}
 
-<!-- DIMENSIONS -->
-
-<!-- <div
-  class="absolute z-100 p2 rounded-r-md top-1/2 left-0 bg-white/70 text-black"
->
-  <div>Dimension 1</div>
-  <div>Dimension 2</div>
-</div> -->
-
 <!-- ZOOMABLE PANABLE CANVAS -->
 
 <div
@@ -147,7 +140,6 @@
           "z-30  b-2 absolute top-0 left-0 rounded-md bg-sky-500/10 b-sky-500/60 pointer-events-none"
         )}
       ></div>
-
       <!-- THE FRAME SHOWN WHILE DRAGGING FOR CREATION -->
     {:else if S.currentAction.type === "createFrame"}
       {@const boxValid = boxSizeIsEnough(S.currentAction.boxNormalized)}
@@ -221,7 +213,9 @@
             </div>
           {/if}
 
-          <button
+          <!-- FRAME HANDLING TOOLS -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
             aria-label="Pick frame up"
             onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", uuid])}
             class="absolute z-40 left-1/2 bottom-full -translate-x-1/2 text-black/80 bg-gray-200 rounded-t-md cursor-move whitespace-nowrap b b-black/10"
@@ -238,20 +232,26 @@
                       class="w-full w-full pointer-events-none"
                     />
                   </div>
-                  {console.log("ASSET INFO", asset.info.name)}
                   <span class="text-sm mr1">{asset.info.name}</span>
-                  <!-- <div
-                  class="bg-black/10 shadow-inner px1 text-xs text-black/40 text-mono rounded-md"
-                >
-                  kando.lrl/test
-                </div> -->
                 </div>
               {:else}
                 Loading...
               {/if}
             {/if}
-          </button>
-          <!-- Right handle -->
+            <div class="flex h-full">
+              <button class="h-full px1 flexcc text-black/60">
+                <MoveIcon />
+              </button>
+
+              <button
+                class="h-full px1 flexcc text-black/60 hover:text-cyan-500"
+                aria-label="Copy link to iframe"
+                onmousedown={(ev) => S.ev.mousedown(ev, ["copy-link", uuid])}
+              >
+                <LinkIcon />
+              </button>
+            </div>
+          </div>
 
           <ResizeHandle pos="t" onMouseDown={resizeHandler} />
           <ResizeHandle pos="tr" onMouseDown={resizeHandler} />

@@ -6,6 +6,7 @@ import { renderGrid } from "../grid";
 import thingsStore from "./things";
 import assets from "./assets.svelte";
 import profiles from "./profiles.svelte";
+import clients from "../clients";
 
 export type BoxResizeHandles =
   | "l"
@@ -172,11 +173,25 @@ async function createStore() {
     target?:
       | ["frame-picker", string]
       | ["frame-resize", BoxResizeHandles, string]
+      | ["copy-link", string]
   ) {
     console.log("Mouse down", target);
     if (target) {
       ev.stopPropagation();
       switch (target[0]) {
+        case "copy-link": {
+          console.log("COPYING LINK FOR ", target[1]);
+          // Copy to clipboard
+          const [wal, url] = frames.link(target[1]);
+          if (url && wal) {
+            navigator.clipboard.writeText(url);
+            clients.weave.assets.assetToPocket(wal);
+          } else {
+            alert("Frame isn't on the network yet");
+          }
+
+          break;
+        }
         case "frame-picker": {
           const [startX, startY] = mouseToGridPos(ev.clientX, ev.clientY);
           const t = (ev.currentTarget as HTMLDivElement).parentElement!;

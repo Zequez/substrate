@@ -7,7 +7,12 @@ import {
 import { SimpleHolochain } from "generic-dna/lib/src";
 import { type AppClient } from "@holochain/client";
 import type { ProfilesClient } from "@holochain-open-dev/profiles/dist/profiles-client.d.ts";
-import { encodeHashToBase64, type HoloHash } from "@holochain/client";
+import {
+  encodeHashToBase64,
+  type HoloHash,
+  CellType,
+  type DnaHash,
+} from "@holochain/client";
 
 type Context = {
   weave: WeaveClient;
@@ -16,6 +21,7 @@ type Context = {
   profiles: ProfilesClient;
   agentKey: HoloHash;
   agentKeyB64: string;
+  dnaHash: DnaHash;
 };
 
 let context: Context = null!;
@@ -51,6 +57,15 @@ async function connect(appletServices: AppletServices): Promise<void> {
   const appClient = weaveClient.renderInfo.appletClient;
   const profilesClient = weaveClient.renderInfo.profilesClient;
 
+  const appInfo = await appClient.appInfo();
+  if (!appInfo) {
+    console.log("App info was null?");
+    throw "App info was null for some reason";
+  }
+  const dnaHash = (appInfo.cell_info["substrate"][0] as any)[
+    CellType.Provisioned
+  ].cell_id[0];
+
   context = {
     weave: weaveClient,
     gdna: genericZomeClient,
@@ -58,6 +73,7 @@ async function connect(appletServices: AppletServices): Promise<void> {
     profiles: profilesClient,
     agentKey: appClient.myPubKey,
     agentKeyB64: encodeHashToBase64(appClient.myPubKey),
+    dnaHash,
   };
 }
 
@@ -80,5 +96,8 @@ export default {
   },
   get agentKeyB64() {
     return context.agentKeyB64;
+  },
+  get dnaHash() {
+    return context.dnaHash;
   },
 };

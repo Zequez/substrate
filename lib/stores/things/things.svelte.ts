@@ -5,7 +5,7 @@ import {
   type HoloHash,
   type AppClient,
 } from "@holochain/client";
-import { WeaveClient } from "@theweave/api";
+import { WeaveClient, weaveUrlFromWal, type WAL } from "@theweave/api";
 import { type BoxedFrame } from "../../Frame";
 import LS from "./local.svelte";
 import GDNA from "./gdna.svelte";
@@ -126,6 +126,7 @@ function typeOfThing<const T extends string, K>(
 
   $effect.root(() => {
     $effect(() => {
+      [resolvedFrames];
       doResolutionActions();
     });
   });
@@ -189,6 +190,17 @@ function typeOfThing<const T extends string, K>(
     create,
     update,
     remove,
+    link: (uuid: string): [WAL, string] | [] => {
+      const entryHash = gdnaFrames.getHash(uuid);
+      if (!entryHash) {
+        return [];
+      }
+      const wal: WAL = {
+        hrl: [clients.dnaHash, entryHash],
+        context: { foo: "bar" },
+      };
+      return [wal, weaveUrlFromWal(wal)];
+    },
   };
 }
 

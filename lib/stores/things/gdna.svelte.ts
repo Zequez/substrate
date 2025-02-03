@@ -126,6 +126,9 @@ function things<T extends Wrapper>(anchorNodeId: string) {
       });
 
       fetchedTimestamp = Date.now();
+      if (!firstLoaded) {
+        firstLoaded = true;
+      }
     }
   });
 
@@ -174,6 +177,7 @@ function things<T extends Wrapper>(anchorNodeId: string) {
   }
 
   function set(uuid: string, val: T) {
+    console.log("Setting GDNA", uuid, val);
     if (!firstLoaded) throw "Not ready";
     if (things[uuid]) {
       update(uuid, val);
@@ -204,6 +208,10 @@ function things<T extends Wrapper>(anchorNodeId: string) {
     },
     get ready() {
       return firstLoaded;
+    },
+    getHash(uuid: string) {
+      if (!things[uuid]) return null;
+      return decodeHashFromBase64(things[uuid].id);
     },
   };
 
