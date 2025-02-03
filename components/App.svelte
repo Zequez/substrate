@@ -1,7 +1,8 @@
 <script lang="ts">
   import cx from "classnames";
   import TrashIcon from "~icons/fa6-solid/trash";
-  import S, { type BoxResizeHandles } from "../lib/stores/main.svelte";
+  import CheckIcon from "~icons/fa6-solid/check";
+  import SS, { type BoxResizeHandles } from "../lib/stores/main.svelte";
   import assets from "../lib/stores/assets.svelte";
   import profiles from "../lib/stores/profiles.svelte";
   import { type BoxedFrame, type Box } from "../lib/Frame";
@@ -9,7 +10,8 @@
   // import Coral from "./Coral.svelte";
   // import GenericDnaSandbox from "./GenericDnaSandbox.svelte";
 
-  S.init();
+  const S = SS.store;
+  S.mountInit();
 
   function boxSizeIsEnough(box: Box) {
     return box.w * box.h >= 4;
@@ -37,6 +39,8 @@
 <!-- <GenericDnaInspector /> -->
 <!-- <GenericDnaSandbox H={genericZomeClient} /> -->
 
+<!-- PROFILES -->
+
 <div class="absolute top-0 right-0 bg-blue-500 rounded-bl-md">
   {#each Object.entries(profiles.participantsProfiles) as [agent, profile]}
     {#if profile === "unknown" || profile === "none"}
@@ -46,6 +50,8 @@
     {/if}
   {/each}
 </div>
+
+<!-- TRASH BUTTON -->
 
 <button
   class={cx(
@@ -82,6 +88,28 @@
   ></div>
 </button>
 
+<!-- ZOOM INDICATOR AND RESET -->
+
+{#if S.pos.z !== 1}
+  <button
+    class="absolute bottom-2 right-2 px2 py1 bg-white rounded-md text-xs z-100"
+    onclick={S.ev.resetZoom}
+  >
+    {Math.round(S.pos.z * 100)}%
+  </button>
+{/if}
+
+<!-- DIMENSIONS -->
+
+<!-- <div
+  class="absolute z-100 p2 rounded-r-md top-1/2 left-0 bg-white/70 text-black"
+>
+  <div>Dimension 1</div>
+  <div>Dimension 2</div>
+</div> -->
+
+<!-- ZOOMABLE PANABLE CANVAS -->
+
 <div
   onmouseup={S.ev.mouseup}
   onmousemove={S.ev.mousemove}
@@ -93,6 +121,8 @@
   })}
 >
   <!-- <Coral /> -->
+
+  <!-- GRID PATTERN -->
   <canvas
     onmousedown={S.ev.mousedown}
     class="h-full w-full absolute top-0 left-0 z-10"
@@ -103,6 +133,7 @@
     class={cx("absolute top-0 left-0 z-40")}
     style={`transform: translateX(${S.pos.zx}px) translateY(${S.pos.zy}px) scale(${S.pos.z})`}
   >
+    <!-- THE LITTLE SQUARE CURSOR -->
     {#if S.currentAction.type === "none"}
       {@const box = S.boxInPx(S.mouseBox)}
       <div
@@ -116,6 +147,8 @@
           "z-30  b-2 absolute top-0 left-0 rounded-md bg-sky-500/10 b-sky-500/60 pointer-events-none"
         )}
       ></div>
+
+      <!-- THE FRAME SHOWN WHILE DRAGGING FOR CREATION -->
     {:else if S.currentAction.type === "createFrame"}
       {@const boxValid = boxSizeIsEnough(S.currentAction.boxNormalized)}
       {@const box = S.boxInPx(S.currentAction.boxNormalized)}
@@ -135,6 +168,8 @@
         )}
       ></div>
     {/if}
+
+    <!-- ALL THE CREATED FRAMES -->
     {#each Object.entries(S.frames) as [uuid, frameWrapper] (uuid)}
       {@const frame = frameWrapper.value}
       {@const box = resolveFrameBox(uuid, frame)}
@@ -171,11 +206,19 @@
               Loading...
             {/if}
           {:else}
-            <button
-              class="h-full w-full z-30 absolute top-0 left-0 flexcc"
-              onclick={(ev) => S.ev.click(ev, ["pick-asset", uuid])}
-              >Select asset</button
-            >
+            <div class="p4">
+              <div>
+                <input
+                  class="bg-white text-black/80 rounded-md b b-black/10 px2 py1 w-full"
+                  type="text"
+                  onclick={(ev) => S.ev.click(ev, ["pick-asset", uuid])}
+                  placeholder="Search, or enter URL"
+                />
+                <!-- <button class="bg-green-500 text-white rounded-full p2"
+                  ><CheckIcon /></button
+                > -->
+              </div>
+            </div>
           {/if}
 
           <button
@@ -223,12 +266,3 @@
     {/each}
   </div>
 </div>
-
-{#if S.pos.z !== 1}
-  <button
-    class="absolute bottom-2 right-2 px2 py1 bg-white rounded-md text-xs z-100"
-    onclick={S.ev.resetZoom}
-  >
-    {Math.round(S.pos.z * 100)}%
-  </button>
-{/if}

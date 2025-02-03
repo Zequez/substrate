@@ -1,3 +1,4 @@
+import { onMount } from "svelte";
 import type { Profile } from "@holochain-open-dev/profiles/dist/types.d.ts";
 import { type PeerStatusUpdate } from "@theweave/api";
 import clients from "../clients";
@@ -14,39 +15,30 @@ let participantsProfiles = $state<{ [key: string]: ProfileStatus }>({});
 
 type ProfileStatus = "unknown" | "none" | Profile;
 
-function init() {
-  const unsubPeerstatus = clients.weave.onPeerStatusUpdate((peersStatus) => {
-    console.log("Gotten peers status", peersStatus);
-    peers = peersStatus;
-    Object.entries(peers).forEach(async ([agentString, status]) => {
-      if (!participantsProfiles[agentString]) {
-        participantsProfiles[agentString] = "unknown";
-        const profile = await clients.profiles.getAgentProfile(
-          decodeHashFromBase64(agentString)
-        );
-        if (profile) {
-          participantsProfiles[agentString] = profile.entry;
-        } else {
-          participantsProfiles[agentString] = "none";
+function mountInit() {
+  onMount(() => {
+    return clients.weave.onPeerStatusUpdate((peersStatus) => {
+      console.log("Gotten peers status", peersStatus);
+      peers = peersStatus;
+      Object.entries(peers).forEach(async ([agentString, status]) => {
+        if (!participantsProfiles[agentString]) {
+          participantsProfiles[agentString] = "unknown";
+          const profile = await clients.profiles.getAgentProfile(
+            decodeHashFromBase64(agentString)
+          );
+          if (profile) {
+            participantsProfiles[agentString] = profile.entry;
+          } else {
+            participantsProfiles[agentString] = "none";
+          }
         }
-      }
+      });
     });
   });
-
-  const unsubProfilesClientSignal = clients.profiles.onSignal((s) => {
-    console.log("Profiles signal", s);
-    if (s.type === "EntryCreated" || s.type === "EntryUpdated") {
-    }
-  });
-
-  return function clean() {
-    unsubPeerstatus();
-    unsubProfilesClientSignal();
-  };
 }
 
 export default {
-  init,
+  mountInit,
   get participants() {
     return participantsB64;
   },

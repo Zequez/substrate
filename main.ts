@@ -4,50 +4,45 @@ import { mount } from "svelte";
 
 import App from "./components/App.svelte";
 import clients from "./lib/clients";
-
-import {
-  isWeaveContext,
-  WeaveClient,
-  initializeHotReload,
+import S from "./lib/stores/main.svelte";
+import type {
+  AppletHash,
+  AppletServices,
+  AssetInfo,
+  RecordInfo,
+  WAL,
+  WeaveServices,
 } from "@theweave/api";
-import { SimpleHolochain } from "generic-dna/lib/src";
+import { type AppClient } from "@holochain/client";
 
 (async function () {
-  await clients.connect();
-  // if (import.meta.env.DEV) {
-  //   try {
-  //     console.log("Initializing hot reload");
-  //     await initializeHotReload();
-  //   } catch (e) {
-  //     console.warn("Could not initialize Weave applet hot-reloading");
-  //   }
-  // }
+  const appletServices: AppletServices = {
+    creatables: {},
+    blockTypes: {},
 
-  // const weaveClient = isWeaveContext()
-  //   ? await WeaveClient.connect()
-  //   : undefined;
+    getAssetInfo: async (
+      appletClient: AppClient,
+      wal: WAL,
+      recordInfo?: RecordInfo
+    ): Promise<AssetInfo | undefined> => {
+      return {
+        icon_src: "",
+        name: "",
+      };
+    },
 
-  // if (!weaveClient) throw "Not running in Weave";
+    search: async (
+      appletClient: AppClient,
+      appletHash: AppletHash,
+      weaveServices: WeaveServices,
+      searchFilter: string
+    ) => {
+      return [];
+    },
+  };
 
-  // if (weaveClient.renderInfo.type !== "applet-view") {
-  //   throw "Not running in Weave applet view";
-  // }
-
-  // const genericZomeClient = await SimpleHolochain.connect(
-  //   weaveClient.renderInfo.appletClient,
-  //   {
-  //     role_name: "substrate",
-  //     zome_name: "generic_zome",
-  //   }
-  // );
-
-  // const appClient = weaveClient.renderInfo.appletClient;
-
-  // const clients = {
-  //   weave: weaveClient,
-  //   gdna: genericZomeClient,
-  //   app: appClient,
-  // };
+  await clients.connect(appletServices);
+  await S.initialize();
 
   mount(App, {
     target: document.body,

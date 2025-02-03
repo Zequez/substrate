@@ -52,8 +52,10 @@ function things<T extends Wrapper>(anchorNodeId: string) {
 
   const NET_CACHE_KEY = `GENERIC_DNA_SANDBOX_NET_CACHE_${anchorNodeId}`;
   let things = $state<{ [key: string]: ParsedThing<T> }>(readNetCache());
-  $effect(() => {
-    localStorage.setItem(NET_CACHE_KEY, JSON.stringify(things));
+  $effect.root(() => {
+    $effect(() => {
+      localStorage.setItem(NET_CACHE_KEY, JSON.stringify(things));
+    });
   });
 
   function readNetCache() {
@@ -88,47 +90,43 @@ function things<T extends Wrapper>(anchorNodeId: string) {
 
   const ANCHOR_NODE = { type: "Anchor" as "Anchor", id: anchorNodeId };
 
-  onMount(() => {
-    const unsub = clients.gdna.subscribeToNode(ANCHOR_NODE, async (status) => {
-      console.log(`ANCHOR NODE ${anchorNodeId}`, status);
-      if (status.status === "complete") {
-        const originalThingsHashes = status.value.linkedNodeIds
-          .filter((node) => node.node_id.type === "Thing")
-          .map((node) => node.node_id.id as HoloHash);
+  const unsub = clients.gdna.subscribeToNode(ANCHOR_NODE, async (status) => {
+    console.log(`ANCHOR NODE ${anchorNodeId}`, status);
+    if (status.status === "complete") {
+      const originalThingsHashes = status.value.linkedNodeIds
+        .filter((node) => node.node_id.type === "Thing")
+        .map((node) => node.node_id.id as HoloHash);
 
-        const allThings = await clients.gdna.getThings(originalThingsHashes);
+      const allThings = await clients.gdna.getThings(originalThingsHashes);
 
-        const allThingsWithOriginalId = allThings.map((t, i) => {
-          if (t) {
-            return { ...t, id: originalThingsHashes[i] };
-          } else {
-            return null;
-          }
-        });
+      const allThingsWithOriginalId = allThings.map((t, i) => {
+        if (t) {
+          return { ...t, id: originalThingsHashes[i] };
+        } else {
+          return null;
+        }
+      });
 
-        console.log(`Network Things ${anchorNodeId}`, allThings);
-        allThingsWithOriginalId.forEach((thing) => {
-          if (thing) {
-            try {
-              const content = JSON.parse(thing.content) as T;
-              const stored = things[content.uuid];
-              if (!stored || stored.content.timestamp < content.timestamp) {
-                console.log(`Thing from network ${content.uuid}`);
-                const parsedThing = thingToParsed(thing, content);
-                things[content.uuid] = parsedThing;
-                // onThingDiscovered(parsedThing);
-              }
-            } catch (e) {
-              console.error("Thing badly formatted", thing);
+      console.log(`Network Things ${anchorNodeId}`, allThings);
+      allThingsWithOriginalId.forEach((thing) => {
+        if (thing) {
+          try {
+            const content = JSON.parse(thing.content) as T;
+            const stored = things[content.uuid];
+            if (!stored || stored.content.timestamp < content.timestamp) {
+              console.log(`Thing from network ${content.uuid}`);
+              const parsedThing = thingToParsed(thing, content);
+              things[content.uuid] = parsedThing;
+              // onThingDiscovered(parsedThing);
             }
+          } catch (e) {
+            console.error("Thing badly formatted", thing);
           }
-        });
+        }
+      });
 
-        fetchedTimestamp = Date.now();
-      }
-    });
-
-    return unsub;
+      fetchedTimestamp = Date.now();
+    }
   });
 
   async function create(content: T) {
@@ -185,10 +183,13 @@ function things<T extends Wrapper>(anchorNodeId: string) {
   }
 
   const unwrappedThings: { [key: string]: T } = $derived(
-    Object.values(things).reduce((all, t) => {
-      all[t.content.uuid] = t.content;
-      return all;
-    }, {} as { [key: string]: T })
+    Object.values(things).reduce(
+      (all, t) => {
+        all[t.content.uuid] = t.content;
+        return all;
+      },
+      {} as { [key: string]: T }
+    )
   );
 
   return {

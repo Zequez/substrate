@@ -2,6 +2,7 @@ import {
   isWeaveContext,
   WeaveClient,
   initializeHotReload,
+  AppletServices,
 } from "@theweave/api";
 import { SimpleHolochain } from "generic-dna/lib/src";
 import { type AppClient } from "@holochain/client";
@@ -19,7 +20,7 @@ type Context = {
 
 let context: Context = null!;
 
-async function connect(): Promise<void> {
+async function connect(appletServices: AppletServices): Promise<void> {
   if (import.meta.env.DEV) {
     try {
       console.log("Initializing hot reload");
@@ -30,7 +31,7 @@ async function connect(): Promise<void> {
   }
 
   const weaveClient = isWeaveContext()
-    ? await WeaveClient.connect()
+    ? await WeaveClient.connect(appletServices)
     : undefined;
 
   if (!weaveClient) throw "Not running in Weave";

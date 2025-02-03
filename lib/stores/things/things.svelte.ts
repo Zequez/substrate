@@ -115,7 +115,7 @@ function typeOfThing<const T extends string, K>(
   });
 
   const outputFrames = $derived.by<{ [key: string]: $ThingWrapped }>(() => {
-    const output = {};
+    const output: { [key: string]: $ThingWrapped } = {};
     for (let uuid in resolvedFrames) {
       if (!resolvedFrames[uuid].value.deleted) {
         output[uuid] = resolvedFrames[uuid].value;
@@ -124,8 +124,10 @@ function typeOfThing<const T extends string, K>(
     return output;
   });
 
-  $effect(() => {
-    doResolutionActions();
+  $effect.root(() => {
+    $effect(() => {
+      doResolutionActions();
+    });
   });
 
   function doResolutionActions() {

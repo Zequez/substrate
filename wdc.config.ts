@@ -2,6 +2,7 @@ import { defineConfig } from "wdc";
 
 export default defineConfig({
   version: "0.1.0",
+  id: "substrate",
   changeLog: `
     # 0.1.0
      - There is an infinite grid-based canvas you can pan and zoom
@@ -16,8 +17,8 @@ export default defineConfig({
   subtitle: "Embed Weave assets on a canvas",
   description: "Embed Weave assets on a canvas",
   githubRepo: "zequez/substrate",
-  curationListUrl: "https://github.com/Zequez/weave-tool-curation",
-  curationListId: "substrate",
-  curationListVersionBranch: "main",
+  curationListOriginalUrl:
+    "https://github.com/lightningrodlabs/weave-tool-curation/",
+  curationListForkUrl: "https://github.com/Zequez/weave-tool-curation",
   tags: ["substrate", "canvas", "grid", "embedding"],
 });

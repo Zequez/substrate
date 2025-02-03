@@ -13,15 +13,6 @@ export type BoxedFrame = {
   split: Split;
 };
 
-type ThingOrigin = {
-  agent: string;
-  networkUpdatedAt: Date | null;
-  networkCreatedAt: Date | null;
-  locallyCreatedAt: Date | null;
-  locallyUpdatedAt: Date | null;
-  networkId: string;
-};
-
 export type SplitConfig = [number, "h" | "v"];
 export type Split = [SplitConfig, SplitFrame] | null;
 
@@ -29,18 +20,6 @@ export type SplitFrame = {
   split: Split;
   assetUrl: string;
 };
-
-// export const EXAMPLE: BoxedFrame = {
-//   box: { x: 3, y: 3, h: 12, w: 12 },
-//   assetUrl: "arsars",
-//   split: [
-//     [0.99, "v"],
-//     {
-//       assetUrl: "Potato",
-//       split: [[0.6, "h"], { assetUrl: "arsars", split: null }],
-//     },
-//   ],
-// };
 
 export type ComputedFrame = {
   box: Box;
@@ -88,15 +67,7 @@ export function computeFrames(frame: BoxedFrame): ComputedFrame[] {
   return frames;
 }
 
-// Turn a frame with negative dimensional values to positive w and h values
-export function normalizeFrame(frame: BoxedFrame): BoxedFrame {
-  if (frame.box.w > 0 && frame.box.h > 0) return frame;
-  const x = frame.box.w > 0 ? frame.box.x : frame.box.x + frame.box.w + 1;
-  const y = frame.box.h > 0 ? frame.box.y : frame.box.y + frame.box.h + 1;
-  const w = Math.abs(frame.box.w);
-  const h = Math.abs(frame.box.h);
-  return { ...frame, box: { x, y, w, h } };
-}
+// Turn a box with negative dimensional values to positive w and h values
 
 export function normalizeBox(box: Box): Box {
   if (box.w > 0 && box.h > 0) return box;
