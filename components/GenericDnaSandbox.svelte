@@ -85,7 +85,7 @@
   onMount(() => {
     // H.batchGetNodeAndLinkedNodeIds
     const unsub = H.subscribeToNode(ANCHOR_NODE, async (status) => {
-      console.log("ANCHOR NODE STATUS", status);
+      // console.log("ANCHOR NODE STATUS", status);
       if (status.status === "complete") {
         const originalThingsHashes = status.value.linkedNodeIds
           .filter((node) => node.node_id.type === "Thing")

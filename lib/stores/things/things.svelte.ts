@@ -67,7 +67,7 @@ function typeOfThing<const T extends string, K>(
         return all;
       }, []);
 
-    console.log("ALL UUIDS", uuids);
+    // console.log("ALL UUIDS", uuids);
 
     let resolved: {
       [key: string]: {
@@ -132,7 +132,7 @@ function typeOfThing<const T extends string, K>(
   });
 
   function doResolutionActions() {
-    console.log("RESOLVING", resolvedFrames);
+    // console.log("RESOLVING", resolvedFrames);
     for (let uuid in resolvedFrames) {
       const { resolution, value: frame } = resolvedFrames[uuid];
       resolution.forEach((val, i) => {
@@ -200,6 +200,9 @@ function typeOfThing<const T extends string, K>(
         context: { foo: "bar" },
       };
       return [wal, weaveUrlFromWal(wal)];
+    },
+    findByHash: (hash: HoloHash) => {
+      return gdnaFrames.findByHash(hash);
     },
   };
 }

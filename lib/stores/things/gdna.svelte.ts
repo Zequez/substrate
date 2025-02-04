@@ -91,7 +91,7 @@ function things<T extends Wrapper>(anchorNodeId: string) {
   const ANCHOR_NODE = { type: "Anchor" as "Anchor", id: anchorNodeId };
 
   const unsub = clients.gdna.subscribeToNode(ANCHOR_NODE, async (status) => {
-    console.log(`ANCHOR NODE ${anchorNodeId}`, status);
+    // console.log(`ANCHOR NODE ${anchorNodeId}`, status);
     if (status.status === "complete") {
       const originalThingsHashes = status.value.linkedNodeIds
         .filter((node) => node.node_id.type === "Thing")
@@ -107,7 +107,7 @@ function things<T extends Wrapper>(anchorNodeId: string) {
         }
       });
 
-      console.log(`Network Things ${anchorNodeId}`, allThings);
+      // console.log(`Network Things ${anchorNodeId}`, allThings);
       allThingsWithOriginalId.forEach((thing) => {
         if (thing) {
           try {
@@ -212,6 +212,11 @@ function things<T extends Wrapper>(anchorNodeId: string) {
     getHash(uuid: string) {
       if (!things[uuid]) return null;
       return decodeHashFromBase64(things[uuid].id);
+    },
+    findByHash(hash: HoloHash) {
+      const b64 = encodeHashToBase64(hash);
+      const thing = Object.values(things).find((t) => t.id === b64);
+      return thing ? thing.content : null;
     },
   };
 

@@ -19,6 +19,17 @@ export type BoxResizeHandles =
   | "bl";
 
 async function createStore() {
+  type FramesStore = ReturnType<
+    typeof thingsStore.typeOfThing<"BoxedFrame", BoxedFrame>
+  >;
+
+  let frames = $state<FramesStore>(
+    thingsStore.typeOfThing<"BoxedFrame", BoxedFrame>(
+      "BoxedFrame",
+      "BOXED_FRAME"
+    )
+  );
+
   const gridSize = 30;
   const maxZoom = 4; // x4 the original size
   const minZoom = 0.5;
@@ -31,31 +42,54 @@ async function createStore() {
 
   const zoomPanLSKey = "ZPXPY";
   const defaults = (function () {
-    const def = { zoom: 1, panX: 0, panY: 0 };
-    try {
-      return JSON.parse(localStorage.getItem(zoomPanLSKey)!) || def;
-    } catch (e) {
-      return def;
+    if (clients.wal) {
+      const frameHash = clients.wal.hrl[1];
+      const frame = frames.findByHash(frameHash);
+      if (frame) {
+        console.log("Setting zoom and pan to be centered on linked frame");
+        const { x, y, w, h } = frame.value.box;
+        // Find center of frame
+        const val = {
+          zoom: 1,
+          panX: -(x + w / 2) * gridSize,
+          panY: -(y + h / 2) * gridSize,
+        };
+        console.log("Centering FRAME", val);
+        return val;
+      } else {
+        throw `Frame not found with hash ${frameHash}`;
+      }
+    } else {
+      const def = { zoom: 1, panX: 0, panY: 0 };
+      try {
+        return JSON.parse(localStorage.getItem(zoomPanLSKey)!) || def;
+      } catch (e) {
+        return def;
+      }
     }
   })();
 
   let zoom = $state(defaults.zoom);
   let panX = $state(defaults.panX);
   let panY = $state(defaults.panY);
+  let zWidth = $derived(width * zoom);
+  let zHeight = $derived(height * zoom);
 
   $effect.root(() => {
     let timeout: any = 0;
-    $effect(() => {
-      [zoom, panX, panY];
-      if (timeout) clearTimeout(timeout);
-      // Make dependency explicit
-      setTimeout(() => {
-        localStorage.setItem(
-          zoomPanLSKey,
-          JSON.stringify({ zoom, panX, panY })
-        );
-      }, 100);
-    });
+    if (!clients.wal) {
+      $effect(() => {
+        // Make dependency explicit otherwise doesn't work because $effect.root
+        [zoom, panX, panY];
+        if (timeout) clearTimeout(timeout);
+        setTimeout(() => {
+          localStorage.setItem(
+            zoomPanLSKey,
+            JSON.stringify({ zoom, panX, panY })
+          );
+        }, 100);
+      });
+    }
   });
 
   let mouseX = $state(0);
@@ -66,17 +100,6 @@ async function createStore() {
   let zPanX = $derived(panX * zoom);
   let zPanY = $derived(panY * zoom);
   let zGridSize = $derived(gridSize * zoom);
-
-  type FramesStore = ReturnType<
-    typeof thingsStore.typeOfThing<"BoxedFrame", BoxedFrame>
-  >;
-
-  let frames = $state<FramesStore>(
-    thingsStore.typeOfThing<"BoxedFrame", BoxedFrame>(
-      "BoxedFrame",
-      "BOXED_FRAME"
-    )
-  );
 
   // ██╗███╗   ██╗██╗████████╗
   // ██║████╗  ██║██║╚══██╔══╝
@@ -89,7 +112,7 @@ async function createStore() {
     profiles.mountInit();
 
     onMount(() => {
-      console.log("GRI CHANGED", gridEl);
+      // console.log("GRI CHANGED", gridEl);
       let frameId: any;
       if (gridEl) {
         ctx = gridEl.getContext("2d")!;
@@ -100,10 +123,6 @@ async function createStore() {
           } else {
             width = box.width;
             height = box.height;
-            if (panX === 0 && panY === 0) {
-              panX = width / 2;
-              panY = height / 2;
-            }
             gridEl.width = width;
             gridEl.height = height;
           }
@@ -174,8 +193,9 @@ async function createStore() {
       | ["frame-picker", string]
       | ["frame-resize", BoxResizeHandles, string]
       | ["copy-link", string]
+      | ["remove-asset", string]
   ) {
-    console.log("Mouse down", target);
+    // console.log("Mouse down", target);
     if (target) {
       ev.stopPropagation();
       switch (target[0]) {
@@ -223,6 +243,13 @@ async function createStore() {
             startY,
             newBox: frames.all[target[2]].value.box,
           };
+          break;
+        }
+        case "remove-asset": {
+          frames.update(target[1], {
+            assetUrl: "",
+          });
+          break;
         }
       }
     } else {
@@ -243,7 +270,7 @@ async function createStore() {
   /************************************** */
 
   function handleMouseMove(ev: MouseEvent, target?: ["trash"]) {
-    console.log("Mouse move, target: ", target);
+    // console.log("Mouse move, target: ", target);
     mouseX = ev.clientX;
     mouseY = ev.clientY;
 
@@ -434,8 +461,8 @@ async function createStore() {
   //  ╚═════╝    ╚═╝   ╚═╝╚══════╝╚══════╝
 
   function mouseToGridPos(x: number, y: number) {
-    const gridX = Math.floor((x - zPanX) / zGridSize);
-    const gridY = Math.floor((y - zPanY) / zGridSize);
+    const gridX = Math.floor((x - zPanX - zWidth / 2) / zGridSize);
+    const gridY = Math.floor((y - zPanY - zHeight / 2) / zGridSize);
     return [gridX, gridY];
   }
 
@@ -493,6 +520,18 @@ async function createStore() {
       },
       get zy() {
         return zPanY;
+      },
+      get w() {
+        return width;
+      },
+      get h() {
+        return height;
+      },
+      get zw() {
+        return zWidth;
+      },
+      get zh() {
+        return zHeight;
       },
     },
     get frames() {

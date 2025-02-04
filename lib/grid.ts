@@ -15,8 +15,8 @@ export function renderGrid(
   // const gridSize = (zoom > 1 ? 15 : zoom === 0.5 ? 60 : 30) * zoom;
   const gridSize = size * zoom;
 
-  const physicalPanX = panX * zoom;
-  const physicalPanY = panY * zoom;
+  const physicalPanX = (panX + width / 2) * zoom;
+  const physicalPanY = (panY + height / 2) * zoom;
 
   // Clear the canvas
   ctx.clearRect(0, 0, width, height);
@@ -52,6 +52,8 @@ export function renderGrid(
 
   ctx.lineWidth = 2;
   ctx.strokeStyle = "#fff6";
+
+  // Center lines
 
   if (physicalPanX > 0 && physicalPanX < width) {
     const centerX = physicalPanX;
