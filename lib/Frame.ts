@@ -7,6 +7,8 @@ export type Box = {
   h: number;
 };
 
+type BoxResizeHandles = "l" | "r" | "b" | "t" | "tr" | "br" | "tl" | "bl";
+
 export type BoxedFrame = {
   box: Box;
   assetUrl: string;
@@ -89,4 +91,64 @@ export function rollDownFrame(frame: BoxedFrame): BoxedFrame {
       h: 1,
     },
   };
+}
+
+export function resizeBox(
+  resizeHandle: BoxResizeHandles,
+  box: Box,
+  deltaX: number,
+  deltaY: number
+) {
+  switch (resizeHandle) {
+    case "l":
+      return {
+        ...box,
+        x: Math.min(box.x + deltaX, box.x + box.w - 2),
+        w: Math.max(2, box.w - deltaX),
+      };
+    case "r":
+      return {
+        ...box,
+        w: Math.max(2, box.w + deltaX),
+      };
+    case "t":
+      return {
+        ...box,
+        y: Math.min(box.y + deltaY, box.y + box.h - 2),
+        h: Math.max(2, box.h - deltaY),
+      };
+    case "b":
+      return {
+        ...box,
+        h: Math.max(2, box.h + deltaY),
+      };
+    case "br":
+      return {
+        ...box,
+        h: Math.max(2, box.h + deltaY),
+        w: Math.max(2, box.w + deltaX),
+      };
+    case "tl":
+      return {
+        ...box,
+        y: Math.min(box.y + deltaY, box.y + box.h - 2),
+        h: Math.max(2, box.h - deltaY),
+        x: Math.min(box.x + deltaX, box.x + box.w - 2),
+        w: Math.max(2, box.w - deltaX),
+      };
+    case "tr":
+      return {
+        ...box,
+        y: Math.min(box.y + deltaY, box.y + box.h - 2),
+        h: Math.max(2, box.h - deltaY),
+        w: Math.max(2, box.w + deltaX),
+      };
+    case "bl":
+      return {
+        ...box,
+        h: Math.max(2, box.h + deltaY),
+        x: Math.min(box.x + deltaX, box.x + box.w - 2),
+        w: Math.max(2, box.w - deltaX),
+      };
+  }
 }

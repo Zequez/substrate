@@ -117,19 +117,13 @@
       S.currentAction.type === "pan" || S.currentAction.type === "moveFrame",
   })}
 >
-  <!-- <div class="bg-red-500 absolute z-110 left-1/2 top-1/2 w-full h-full">
-    <div
-      class="w-full h-full bg-yellow-500/50 absolute -left-1/2 -top-1/2"
-    ></div>
-    <div class="bg-black/50 w-10 h-10 top-0 left-0 absolute"></div>
-  </div> -->
   <!-- <Coral /> -->
 
   <!-- GRID PATTERN -->
   <canvas
     onmousedown={S.ev.mousedown}
     class="h-full w-full absolute top-0 left-0 z-10"
-    bind:this={S.ref.grid}
+    bind:this={S.grid.el}
   ></canvas>
 
   <!-- This centers the grid so that 0,0 is in the middle of the screen -->
@@ -140,7 +134,7 @@
   >
     <!-- THE LITTLE SQUARE CURSOR -->
     {#if S.currentAction.type === "none"}
-      {@const box = S.boxInPx(S.mouseBox)}
+      {@const box = S.boxInPx(S.mouse.box)}
       <div
         style={`
 
@@ -261,7 +255,7 @@
             aria-label="Pick frame up"
             onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", uuid])}
             class="absolute z-40 left-1/2 bottom-full -translate-x-1/2 text-black/80 bg-gray-200 rounded-t-md cursor-move whitespace-nowrap b b-black/10"
-            style={`height: ${S.gridSize}px; min-width: ${S.gridSize}px`}
+            style={`height: ${S.grid.size}px; min-width: ${S.grid.size}px`}
           >
             <div class="flex h-full">
               {#if frame.assetUrl}

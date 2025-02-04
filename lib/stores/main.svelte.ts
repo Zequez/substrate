@@ -1,5 +1,5 @@
 import { onMount } from "svelte";
-import { type BoxedFrame, type Box, normalizeBox } from "../Frame";
+import { type BoxedFrame, type Box, normalizeBox, resizeBox } from "../Frame";
 import { renderGrid } from "../grid";
 
 // Sub-states
@@ -7,6 +7,7 @@ import thingsStore from "./things";
 import assets from "./assets.svelte";
 import profiles from "./profiles.svelte";
 import clients from "../clients";
+import uiStore from "./ui.svelte";
 
 export type BoxResizeHandles =
   | "l"
@@ -30,76 +31,10 @@ async function createStore() {
     )
   );
 
-  const gridSize = 30;
-  const maxZoom = 4; // x4 the original size
-  const minZoom = 0.5;
-  const zoomStep = 0.001; // % zoomed for each deltaY
+  const frameHash = clients.wal ? clients.wal.hrl[1] : null;
+  const frame = frameHash ? frames.findByHash(frameHash) : null;
 
-  let gridEl = $state<HTMLCanvasElement>(null!);
-  let width = $state(0);
-  let height = $state(0);
-  let ctx = $state<CanvasRenderingContext2D>(null!);
-
-  const zoomPanLSKey = "ZPXPY";
-  const defaults = (function () {
-    if (clients.wal) {
-      const frameHash = clients.wal.hrl[1];
-      const frame = frames.findByHash(frameHash);
-      if (frame) {
-        console.log("Setting zoom and pan to be centered on linked frame");
-        const { x, y, w, h } = frame.value.box;
-        // Find center of frame
-        const val = {
-          zoom: 1,
-          panX: -(x + w / 2) * gridSize,
-          panY: -(y + h / 2) * gridSize,
-        };
-        console.log("Centering FRAME", val);
-        return val;
-      } else {
-        throw `Frame not found with hash ${frameHash}`;
-      }
-    } else {
-      const def = { zoom: 1, panX: 0, panY: 0 };
-      try {
-        return JSON.parse(localStorage.getItem(zoomPanLSKey)!) || def;
-      } catch (e) {
-        return def;
-      }
-    }
-  })();
-
-  let zoom = $state(defaults.zoom);
-  let panX = $state(defaults.panX);
-  let panY = $state(defaults.panY);
-  let zWidth = $derived(width * zoom);
-  let zHeight = $derived(height * zoom);
-
-  $effect.root(() => {
-    let timeout: any = 0;
-    if (!clients.wal) {
-      $effect(() => {
-        // Make dependency explicit otherwise doesn't work because $effect.root
-        [zoom, panX, panY];
-        if (timeout) clearTimeout(timeout);
-        setTimeout(() => {
-          localStorage.setItem(
-            zoomPanLSKey,
-            JSON.stringify({ zoom, panX, panY })
-          );
-        }, 100);
-      });
-    }
-  });
-
-  let mouseX = $state(0);
-  let mouseY = $state(0);
-  let [mouseGridX, mouseGridY] = $derived(mouseToGridPos(mouseX, mouseY));
-  let mouseBox = $derived<Box>({ x: mouseGridX, y: mouseGridY, w: 1, h: 1 });
-
-  let zPanX = $derived(panX * zoom);
-  let zPanY = $derived(panY * zoom);
-  let zGridSize = $derived(gridSize * zoom);
+  const ui = uiStore({ centerAt: frame ? frame.value.box : null });
 
   // ██╗███╗   ██╗██╗████████╗
   // ██║████╗  ██║██║╚══██╔══╝
@@ -110,46 +45,7 @@ async function createStore() {
 
   function mountInit() {
     profiles.mountInit();
-
-    onMount(() => {
-      // console.log("GRI CHANGED", gridEl);
-      let frameId: any;
-      if (gridEl) {
-        ctx = gridEl.getContext("2d")!;
-        function initializeCanvas() {
-          const box = gridEl.getBoundingClientRect();
-          if (box.width === 0 || box.height === 0) {
-            frameId = requestAnimationFrame(initializeCanvas); // Retry on the next frame
-          } else {
-            width = box.width;
-            height = box.height;
-            gridEl.width = width;
-            gridEl.height = height;
-          }
-        }
-
-        initializeCanvas(); // Start initialization
-      }
-
-      return () => {
-        if (frameId) {
-          cancelAnimationFrame(frameId);
-        }
-      };
-    });
-
-    $effect(() => {
-      if (!ctx) return;
-      renderGrid(ctx, {
-        width,
-        height,
-        zoom,
-        panX,
-        panY,
-        color: "#fff3",
-        size: gridSize,
-      });
-    });
+    ui.mountInit();
   }
 
   //  █████╗  ██████╗████████╗██╗ ██████╗ ███╗   ██╗███████╗
@@ -213,7 +109,7 @@ async function createStore() {
           break;
         }
         case "frame-picker": {
-          const [startX, startY] = mouseToGridPos(ev.clientX, ev.clientY);
+          const [startX, startY] = ui.mouseToGridPos(ev.clientX, ev.clientY);
           const t = (ev.currentTarget as HTMLDivElement).parentElement!;
           const { left, top, width, height } = t.getBoundingClientRect();
           const pickX = (ev.clientX - left) / width;
@@ -234,7 +130,7 @@ async function createStore() {
           break;
         }
         case "frame-resize": {
-          const [startX, startY] = mouseToGridPos(ev.clientX, ev.clientY);
+          const [startX, startY] = ui.mouseToGridPos(ev.clientX, ev.clientY);
           mouseDown = {
             type: "resizeFrame",
             pos: target[1],
@@ -258,8 +154,8 @@ async function createStore() {
       } else if (ev.button === 0) {
         mouseDown = {
           type: "createFrame",
-          box: mouseBox,
-          boxNormalized: mouseBox,
+          box: ui.mouse.box,
+          boxNormalized: ui.mouse.box,
         };
       }
     }
@@ -271,32 +167,30 @@ async function createStore() {
 
   function handleMouseMove(ev: MouseEvent, target?: ["trash"]) {
     // console.log("Mouse move, target: ", target);
-    mouseX = ev.clientX;
-    mouseY = ev.clientY;
+    ui.mouse.setXY(ev.clientX, ev.clientY);
 
     switch (mouseDown.type) {
       case "pan":
-        panX = panX + ev.movementX / zoom;
-        panY = panY + ev.movementY / zoom;
+        ui.mouse.pan(ev.movementX, ev.movementY);
         break;
       case "createFrame": {
         // PIN the frame and allow it to expand with cursor movement
         // x & y stay static
         // w & h can get both positive and negative values
-        const towardsLeft = mouseGridX < mouseDown.box.x;
-        const towardsUp = mouseGridY < mouseDown.box.y;
+        const towardsLeft = ui.mouse.gridX < mouseDown.box.x;
+        const towardsUp = ui.mouse.gridY < mouseDown.box.y;
         mouseDown.box = {
           ...mouseDown.box,
-          w: mouseGridX - mouseDown.box.x + (towardsLeft ? -1 : 1),
-          h: mouseGridY - mouseDown.box.y + (towardsUp ? -1 : 1),
+          w: ui.mouse.gridX - mouseDown.box.x + (towardsLeft ? -1 : 1),
+          h: ui.mouse.gridY - mouseDown.box.y + (towardsUp ? -1 : 1),
         };
         mouseDown.boxNormalized = normalizeBox(mouseDown.box);
         break;
       }
       case "moveFrame": {
         const boxDelta = {
-          x: mouseGridX - mouseDown.startX,
-          y: mouseGridY - mouseDown.startY,
+          x: ui.mouse.gridX - mouseDown.startX,
+          y: ui.mouse.gridY - mouseDown.startY,
         };
         mouseDown.boxDelta.x = boxDelta.x;
         mouseDown.boxDelta.y = boxDelta.y;
@@ -310,59 +204,9 @@ async function createStore() {
       }
       case "resizeFrame": {
         const frame = frames.all[mouseDown.uuid].value;
-        let deltaX = mouseGridX - mouseDown.startX;
-        let deltaY = mouseGridY - mouseDown.startY;
-        if (mouseDown.pos === "l") {
-          mouseDown.newBox = {
-            ...frame.box,
-            x: Math.min(frame.box.x + deltaX, frame.box.x + frame.box.w - 2),
-            w: Math.max(2, frame.box.w - deltaX),
-          };
-        } else if (mouseDown.pos === "r") {
-          mouseDown.newBox = {
-            ...frame.box,
-            w: Math.max(2, frame.box.w + deltaX),
-          };
-        } else if (mouseDown.pos === "t") {
-          mouseDown.newBox = {
-            ...frame.box,
-            y: Math.min(frame.box.y + deltaY, frame.box.y + frame.box.h - 2),
-            h: Math.max(2, frame.box.h - deltaY),
-          };
-        } else if (mouseDown.pos === "b") {
-          mouseDown.newBox = {
-            ...frame.box,
-            h: Math.max(2, frame.box.h + deltaY),
-          };
-        } else if (mouseDown.pos === "br") {
-          mouseDown.newBox = {
-            ...frame.box,
-            h: Math.max(2, frame.box.h + deltaY),
-            w: Math.max(2, frame.box.w + deltaX),
-          };
-        } else if (mouseDown.pos === "tl") {
-          mouseDown.newBox = {
-            ...frame.box,
-            y: Math.min(frame.box.y + deltaY, frame.box.y + frame.box.h - 2),
-            h: Math.max(2, frame.box.h - deltaY),
-            x: Math.min(frame.box.x + deltaX, frame.box.x + frame.box.w - 2),
-            w: Math.max(2, frame.box.w - deltaX),
-          };
-        } else if (mouseDown.pos === "tr") {
-          mouseDown.newBox = {
-            ...frame.box,
-            y: Math.min(frame.box.y + deltaY, frame.box.y + frame.box.h - 2),
-            h: Math.max(2, frame.box.h - deltaY),
-            w: Math.max(2, frame.box.w + deltaX),
-          };
-        } else if (mouseDown.pos === "bl") {
-          mouseDown.newBox = {
-            ...frame.box,
-            h: Math.max(2, frame.box.h + deltaY),
-            x: Math.min(frame.box.x + deltaX, frame.box.x + frame.box.w - 2),
-            w: Math.max(2, frame.box.w - deltaX),
-          };
-        }
+        let deltaX = ui.mouse.gridX - mouseDown.startX;
+        let deltaY = ui.mouse.gridY - mouseDown.startY;
+        mouseDown.newBox = resizeBox(mouseDown.pos, frame.box, deltaX, deltaY);
       }
     }
   }
@@ -435,42 +279,7 @@ async function createStore() {
 
   function handleWheel(ev: WheelEvent) {
     ev.preventDefault();
-    setZoom(zoom + ev.deltaY * zoomStep, ev.clientX, ev.clientY);
-  }
-
-  function setZoom(newZoom: number, centerX?: number, centerY?: number) {
-    if (!centerX) centerX = width / 2;
-    if (!centerY) centerY = height / 2;
-    let processedZoom = newZoom;
-    if (newZoom < minZoom) processedZoom = minZoom;
-    if (newZoom > maxZoom) processedZoom = maxZoom;
-    const zoomDelta = 1 - processedZoom / zoom;
-    if (zoomDelta !== 0) {
-      const screenPos = screenToCanvasPos(centerX, centerY);
-      panX += (screenPos[0] * zoomDelta) / processedZoom;
-      panY += (screenPos[1] * zoomDelta) / processedZoom;
-    }
-    zoom = processedZoom;
-  }
-
-  // ██╗   ██╗████████╗██╗██╗     ███████╗
-  // ██║   ██║╚══██╔══╝██║██║     ██╔════╝
-  // ██║   ██║   ██║   ██║██║     ███████╗
-  // ██║   ██║   ██║   ██║██║     ╚════██║
-  // ╚██████╔╝   ██║   ██║███████╗███████║
-  //  ╚═════╝    ╚═╝   ╚═╝╚══════╝╚══════╝
-
-  function mouseToGridPos(x: number, y: number) {
-    const gridX = Math.floor((x - zPanX - zWidth / 2) / zGridSize);
-    const gridY = Math.floor((y - zPanY - zHeight / 2) / zGridSize);
-    return [gridX, gridY];
-  }
-
-  function screenToCanvasPos(x: number, y: number) {
-    const imgBox = gridEl.getBoundingClientRect();
-    const relativeX = x - imgBox.left;
-    const relativeY = y - imgBox.top;
-    return [relativeX, relativeY] as [number, number];
+    ui.pos.setZoomFromWheel(ev);
   }
 
   // ██╗███╗   ██╗████████╗███████╗██████╗ ███████╗ █████╗  ██████╗███████╗
@@ -488,64 +297,18 @@ async function createStore() {
       mousemove: handleMouseMove,
       mouseup: handleMouseUp,
       wheel: handleWheel,
-      resetZoom: () => setZoom(1),
+      resetZoom: () => ui.pos.setZoom(1),
     },
-    ref: {
-      get grid() {
-        return gridEl;
-      },
-      set grid(v: HTMLCanvasElement) {
-        gridEl = v;
-      },
-    },
-    gridSize,
-    get zGridSize() {
-      return zGridSize;
-    },
+    ui,
+    boxInPx: ui.grid.boxInPx,
+    pos: ui.pos,
+    grid: ui.grid,
+    mouse: ui.mouse,
     get currentAction() {
       return mouseDown;
     },
-    pos: {
-      get z() {
-        return zoom;
-      },
-      get x() {
-        return panX;
-      },
-      get y() {
-        return panY;
-      },
-      get zx() {
-        return zPanX;
-      },
-      get zy() {
-        return zPanY;
-      },
-      get w() {
-        return width;
-      },
-      get h() {
-        return height;
-      },
-      get zw() {
-        return zWidth;
-      },
-      get zh() {
-        return zHeight;
-      },
-    },
     get frames() {
       return frames.all;
-    },
-    gridToPx: (n: number) => n * gridSize,
-    boxInPx: (box: Box): Box => ({
-      x: box.x * gridSize,
-      y: box.y * gridSize,
-      w: box.w * gridSize,
-      h: box.h * gridSize,
-    }),
-    get mouseBox(): Box {
-      return mouseBox;
     },
   };
 }

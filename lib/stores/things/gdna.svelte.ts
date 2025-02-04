@@ -177,7 +177,7 @@ function things<T extends Wrapper>(anchorNodeId: string) {
   }
 
   function set(uuid: string, val: T) {
-    console.log("Setting GDNA", uuid, val);
+    // console.log("Setting GDNA", uuid, val);
     if (!firstLoaded) throw "Not ready";
     if (things[uuid]) {
       update(uuid, val);
