@@ -24,10 +24,7 @@ type Context = {
   agentKey: HoloHash;
   agentKeyB64: string;
   dnaHash: DnaHash;
-  dnaHashB64: string;
   wal: null | WAL;
-  walDna: null | string;
-  walAsset: null | string;
 };
 
 let context: Context = null!;
@@ -95,10 +92,7 @@ async function connect(appletServices: AppletServices): Promise<void> {
     agentKey: appClient.myPubKey,
     agentKeyB64: encodeHashToBase64(appClient.myPubKey),
     dnaHash,
-    dnaHashB64: encodeHashToBase64(dnaHash),
     wal,
-    walDna: wal ? encodeHashToBase64(wal.hrl[0]) : null,
-    walAsset: wal ? encodeHashToBase64(wal.hrl[1]) : null,
   };
 }
 
@@ -125,16 +119,7 @@ export default {
   get dnaHash() {
     return context.dnaHash;
   },
-  get dnaHashB64() {
-    return context.dnaHashB64;
-  },
   get wal() {
     return context.wal;
-  },
-  get walDna() {
-    return context.walDna;
-  },
-  get walAsset() {
-    return context.walAsset;
   },
 };

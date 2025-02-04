@@ -1,6 +1,7 @@
 import "@unocss/reset/tailwind.css";
 import "virtual:uno.css";
 import { mount } from "svelte";
+import icon2 from "./icon2.svg";
 
 import App from "./components/App.svelte";
 import clients from "./lib/clients";
@@ -26,8 +27,8 @@ import { type AppClient } from "@holochain/client";
       recordInfo?: RecordInfo
     ): Promise<AssetInfo | undefined> => {
       return {
-        icon_src: "",
-        name: "",
+        icon_src: icon2,
+        name: "Frame",
       };
     },
 
