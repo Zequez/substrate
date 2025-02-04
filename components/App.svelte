@@ -3,6 +3,7 @@
   import TrashIcon from "~icons/fa6-solid/trash";
   import CheckIcon from "~icons/fa6-solid/check";
   import LinkIcon from "~icons/fa6-solid/link";
+  import SquareIcon from "~icons/fa6-regular/square";
   import CircleMinusIcon from "~icons/fa6-solid/circle-minus";
   import MoveIcon from "~icons/fa6-solid/arrows-up-down-left-right";
   import { encodeHashToBase64 } from "@holochain/client";
@@ -96,14 +97,25 @@
 
 <!-- ZOOM INDICATOR AND RESET -->
 
-{#if S.pos.z !== 1}
-  <button
-    class="absolute bottom-2 right-2 px2 py1 bg-white rounded-md text-xs z-100"
-    onclick={S.ev.resetZoom}
-  >
-    {Math.round(S.pos.z * 100)}%
-  </button>
-{/if}
+<div class="absolute bottom-2 right-2 z-100 flex space-x-2">
+  {#if S.pos.z !== 1}
+    <button
+      class="px2 py1 bg-white rounded-md text-xs hover:bg-gray-100"
+      onclick={S.ev.resetZoom}
+    >
+      {Math.round(S.pos.z * 100)}%
+    </button>
+  {/if}
+  {#if Object.keys(S.frames).length}
+    <button
+      title="Fit all frames on the viewport"
+      class="bg-white px2 py1 rounded-md text-xs hover:bg-gray-100"
+      onclick={(ev) => S.ev.mousedown(ev, ["fit-all"])}
+    >
+      <SquareIcon />
+    </button>
+  {/if}
+</div>
 
 <!-- ZOOMABLE PANABLE CANVAS -->
 
@@ -130,7 +142,7 @@
   <!-- <div class="h-full w-full absolute left-1/2 top-1/2"> -->
   <div
     class={cx("absolute top-0 left-0 z-40")}
-    style={`transform: translateX(${S.pos.zx + S.pos.zw / 2}px) translateY(${S.pos.zy + S.pos.zh / 2}px) scale(${S.pos.z})`}
+    style={`transform: translateX(${S.pos.zx + S.pos.w / 2}px) translateY(${S.pos.zy + S.pos.h / 2}px) scale(${S.pos.z})`}
   >
     <!-- THE LITTLE SQUARE CURSOR -->
     {#if S.currentAction.type === "none"}

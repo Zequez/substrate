@@ -5,7 +5,7 @@ import { renderGrid } from "../../lib/grid";
 function uiStore(config: { centerAt: Box | null }) {
   const gridSize = 30;
   const maxZoom = 4; // x4 the original size
-  const minZoom = 0.5;
+  let minZoom = $state(0.5);
   const zoomStep = 0.001; // % zoomed for each deltaY
 
   let gridEl = $state<HTMLCanvasElement>(null!);
@@ -111,17 +111,24 @@ function uiStore(config: { centerAt: Box | null }) {
   }
 
   function mouseToGridPos(x: number, y: number) {
-    const gridX = Math.floor((x - zPanX - zWidth / 2) / zGridSize);
-    const gridY = Math.floor((y - zPanY - zHeight / 2) / zGridSize);
+    const gridX = Math.floor((x - zPanX - width / 2) / zGridSize);
+    const gridY = Math.floor((y - zPanY - height / 2) / zGridSize);
     return [gridX, gridY];
   }
 
   function screenToCanvasPos(x: number, y: number) {
     const imgBox = gridEl.getBoundingClientRect();
-    const relativeX = x - imgBox.left;
-    const relativeY = y - imgBox.top;
+    const relativeX = x - imgBox.left - imgBox.width / 2;
+    const relativeY = y - imgBox.top - imgBox.height / 2;
     return [relativeX, relativeY] as [number, number];
   }
+
+  const boxInPx = (box: Box): Box => ({
+    x: box.x * gridSize,
+    y: box.y * gridSize,
+    w: box.w * gridSize,
+    h: box.h * gridSize,
+  });
 
   function setZoom(newZoom: number, centerX?: number, centerY?: number) {
     if (!centerX) centerX = width / 2;
@@ -138,11 +145,37 @@ function uiStore(config: { centerAt: Box | null }) {
     zoom = processedZoom;
   }
 
+  function setMinZoomToFitBox(box: Box) {
+    const w = box.w * gridSize + gridSize * 5;
+    const h = box.h * gridSize + gridSize * 5;
+    const zoomForW = width / w;
+    const zoomForH = height / h;
+    minZoom = Math.min(zoomForW, zoomForH, 0.5);
+  }
+
+  function panZoomToFit(box: Box) {
+    const w = box.w * gridSize + gridSize * 5;
+    const h = box.h * gridSize + gridSize * 5;
+    const zoomForW = width / w;
+    const zoomForH = height / h;
+    const newZoom = Math.min(zoomForW, zoomForH, 0.5);
+    // const centerX = ;
+    // const centerY = height / 2;
+    zoom = newZoom;
+    const newPanX = (box.x + box.w / 2 + 2.5) * gridSize - zWidth / 2;
+    const newPanY = (box.y + box.h / 2 + 2.5) * gridSize - zHeight / 2;
+    console.log("PAN", newPanX, newPanY);
+    panX = -newPanX;
+    panY = -newPanY;
+    // console.log(panX, panY);
+    // console.log("ZOOM", zoom, centerX, centerY);
+    // setZoom(zoom, centerX, centerY);
+  }
+
   return {
     mountInit,
-    maxZoom,
-    minZoom,
-    zoomStep,
+    setMinZoomToFitBox,
+    panZoomToFit,
     grid: {
       get el() {
         return gridEl;
@@ -155,12 +188,7 @@ function uiStore(config: { centerAt: Box | null }) {
         return zGridSize;
       },
       toPx: (n: number) => n * gridSize,
-      boxInPx: (box: Box): Box => ({
-        x: box.x * gridSize,
-        y: box.y * gridSize,
-        w: box.w * gridSize,
-        h: box.h * gridSize,
-      }),
+      boxInPx,
     },
     pos: {
       get z() {

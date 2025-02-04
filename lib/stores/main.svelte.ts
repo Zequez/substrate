@@ -1,5 +1,11 @@
 import { onMount } from "svelte";
-import { type BoxedFrame, type Box, normalizeBox, resizeBox } from "../Frame";
+import {
+  type BoxedFrame,
+  type Box,
+  normalizeBox,
+  resizeBox,
+  containingBox,
+} from "../Frame";
 import { renderGrid } from "../grid";
 
 // Sub-states
@@ -33,6 +39,9 @@ async function createStore() {
 
   const frameHash = clients.wal ? clients.wal.hrl[1] : null;
   const frame = frameHash ? frames.findByHash(frameHash) : null;
+  const fitAllBox = $derived(
+    containingBox(Object.values(frames.all).map((f) => f.value.box))
+  );
 
   const ui = uiStore({ centerAt: frame ? frame.value.box : null });
 
@@ -46,6 +55,10 @@ async function createStore() {
   function mountInit() {
     profiles.mountInit();
     ui.mountInit();
+
+    $effect(() => {
+      ui.setMinZoomToFitBox(fitAllBox);
+    });
   }
 
   //  █████╗  ██████╗████████╗██╗ ██████╗ ███╗   ██╗███████╗
@@ -81,6 +94,7 @@ async function createStore() {
         startY: number;
         newBox: Box;
       };
+
   let mouseDown = $state<MouseDownActions>({ type: "none" });
 
   function handleMouseDown(
@@ -90,6 +104,7 @@ async function createStore() {
       | ["frame-resize", BoxResizeHandles, string]
       | ["copy-link", string]
       | ["remove-asset", string]
+      | ["fit-all"]
   ) {
     // console.log("Mouse down", target);
     if (target) {
@@ -146,6 +161,9 @@ async function createStore() {
             assetUrl: "",
           });
           break;
+        }
+        case "fit-all": {
+          ui.panZoomToFit(fitAllBox);
         }
       }
     } else {

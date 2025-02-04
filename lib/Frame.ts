@@ -93,6 +93,29 @@ export function rollDownFrame(frame: BoxedFrame): BoxedFrame {
   };
 }
 
+export function containingBox(boxes: Box[]): Box {
+  if (boxes.length === 0) throw "No boxes to contain";
+
+  let tl: number;
+  let tr: number;
+  let bl: number;
+  let br: number;
+
+  boxes.forEach((b) => {
+    if (b.x < tl || tl === undefined) tl = b.x;
+    if (b.y < tr || tr === undefined) tr = b.y;
+    if (b.x + b.w > br || br === undefined) br = b.x + b.w;
+    if (b.y + b.h > bl || bl === undefined) bl = b.y + b.h;
+  });
+
+  return {
+    x: tl!,
+    y: tr!,
+    w: br! - tl!,
+    h: bl! - tr!,
+  };
+}
+
 export function resizeBox(
   resizeHandle: BoxResizeHandles,
   box: Box,
