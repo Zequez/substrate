@@ -29,5 +29,5 @@ export default defineConfig({
   curationListOriginalUrl:
     "https://github.com/lightningrodlabs/weave-tool-curation/",
   curationListForkUrl: "https://github.com/Zequez/weave-tool-curation",
-  tags: ["substrate", "canvas", "grid", "embedding"],
+  tags: ["substrate", "canvas", "grid", "embedding", "assemblage"],
 });
