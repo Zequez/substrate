@@ -116,6 +116,15 @@ export function containingBox(boxes: Box[]): Box {
   };
 }
 
+export function isTouching(box1: Box, box2: Box) {
+  return (
+    box1.x < box2.x + box2.w &&
+    box1.x + box1.w > box2.x &&
+    box1.y < box2.y + box2.h &&
+    box1.y + box1.h > box2.y
+  );
+}
+
 export function resizeBox(
   resizeHandle: BoxResizeHandles,
   box: Box,

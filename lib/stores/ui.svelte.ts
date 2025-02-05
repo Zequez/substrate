@@ -66,6 +66,14 @@ function uiStore(config: { centerAt: Box | null }) {
   let zPanY = $derived(panY * zoom);
   let zGridSize = $derived(gridSize * zoom);
 
+  const viewportMargin = 2;
+  let viewport = $derived({
+    x: -panX - width / 2 / gridSize / zoom - viewportMargin,
+    y: -panY - height / 2 / gridSize / zoom - viewportMargin,
+    w: width / gridSize / zoom + viewportMargin,
+    h: height / gridSize / zoom + viewportMargin,
+  });
+
   function mountInit() {
     onMount(() => {
       let frameId: any;
@@ -201,6 +209,9 @@ function uiStore(config: { centerAt: Box | null }) {
       boxToPx,
     },
     pos: {
+      get viewport() {
+        return viewport;
+      },
       get z() {
         return zoom;
       },
