@@ -83,7 +83,7 @@ async function createStore() {
   type MouseDownActions =
     | { type: "none" }
     | { type: "pan" }
-    | { type: "createFrame"; box: Box; boxNormalized: Box }
+    | { type: "createFrame"; box: Box; boxNormalized: Box; isValid: boolean }
     | {
         type: "moveFrame";
         uuid: string;
@@ -93,6 +93,8 @@ async function createStore() {
         trashing: boolean;
         pickX: number;
         pickY: number;
+        lastValidBoxDelta: { x: number; y: number };
+        isValid: boolean;
       }
     | {
         type: "resizeFrame";
@@ -101,6 +103,8 @@ async function createStore() {
         startX: number;
         startY: number;
         newBox: Box;
+        lastValidBox: Box;
+        isValid: boolean;
       };
 
   let mouseDown = $state<MouseDownActions>({ type: "none" });
@@ -148,6 +152,8 @@ async function createStore() {
               x: 0,
               y: 0,
             },
+            lastValidBoxDelta: { x: 0, y: 0 },
+            isValid: true,
             trashing: false,
           };
           break;
@@ -161,6 +167,8 @@ async function createStore() {
             startX,
             startY,
             newBox: frames.all[target[2]].value.box,
+            lastValidBox: frames.all[target[2]].value.box,
+            isValid: true,
           };
           break;
         }
@@ -182,6 +190,7 @@ async function createStore() {
           type: "createFrame",
           box: ui.mouse.box,
           boxNormalized: ui.mouse.box,
+          isValid: boxIsValid(ui.mouse.box),
         };
       }
     }
@@ -211,15 +220,28 @@ async function createStore() {
           h: ui.mouse.gridY - mouseDown.box.y + (towardsUp ? -1 : 1),
         };
         mouseDown.boxNormalized = normalizeBox(mouseDown.box);
+        mouseDown.isValid = boxIsValid(mouseDown.boxNormalized);
         break;
       }
       case "moveFrame": {
-        const boxDelta = {
+        const frame = frames.all[mouseDown.uuid].value;
+        const newBoxDelta = {
           x: ui.mouse.gridX - mouseDown.startX,
           y: ui.mouse.gridY - mouseDown.startY,
         };
-        mouseDown.boxDelta.x = boxDelta.x;
-        mouseDown.boxDelta.y = boxDelta.y;
+        mouseDown.boxDelta = newBoxDelta;
+
+        const newBox = {
+          ...frame.box,
+          x: frame.box.x + newBoxDelta.x,
+          y: frame.box.y + newBoxDelta.y,
+        };
+
+        mouseDown.isValid = boxIsValid(newBox, mouseDown.uuid);
+
+        if (mouseDown.isValid) {
+          mouseDown.lastValidBoxDelta = newBoxDelta;
+        }
 
         if (target && target[0] === "trash") {
           mouseDown.trashing = true;
@@ -232,7 +254,12 @@ async function createStore() {
         const frame = frames.all[mouseDown.uuid].value;
         let deltaX = ui.mouse.gridX - mouseDown.startX;
         let deltaY = ui.mouse.gridY - mouseDown.startY;
-        mouseDown.newBox = resizeBox(mouseDown.pos, frame.box, deltaX, deltaY);
+        const newBox = resizeBox(mouseDown.pos, frame.box, deltaX, deltaY);
+        mouseDown.isValid = boxIsValid(newBox, mouseDown.uuid);
+        mouseDown.newBox = newBox;
+        if (mouseDown.isValid) {
+          mouseDown.lastValidBox = newBox;
+        }
       }
     }
   }
@@ -244,7 +271,7 @@ async function createStore() {
   function handleMouseUp() {
     switch (mouseDown.type) {
       case "createFrame": {
-        if (mouseDown.boxNormalized.w * mouseDown.boxNormalized.h >= 4) {
+        if (mouseDown.isValid) {
           const newFrame: BoxedFrame = {
             box: mouseDown.boxNormalized,
             assetUrl: "",
@@ -263,8 +290,8 @@ async function createStore() {
           frames.update(mouseDown.uuid, {
             box: {
               ...frame.box,
-              x: frame.box.x + mouseDown.boxDelta.x,
-              y: frame.box.y + mouseDown.boxDelta.y,
+              x: frame.box.x + mouseDown.lastValidBoxDelta.x,
+              y: frame.box.y + mouseDown.lastValidBoxDelta.y,
             },
           });
         }
@@ -272,7 +299,7 @@ async function createStore() {
       }
       case "resizeFrame": {
         frames.update(mouseDown.uuid, {
-          box: mouseDown.newBox,
+          box: mouseDown.lastValidBox,
         });
         break;
       }
@@ -309,6 +336,20 @@ async function createStore() {
     ui.pos.setZoomFromWheel(ev);
   }
 
+  // UTILS
+
+  function frameIsInViewport(uuid: string): boolean {
+    return framesInViewport.indexOf(uuid) !== -1;
+  }
+
+  function boxIsValid(box: Box, excludeUuid?: string) {
+    if (box.w * box.h < 4 || box.w < 2 || box.h < 2) return false;
+    const viewportFrames = Object.values(frames.all).filter(
+      (f) => f.uuid !== excludeUuid && frameIsInViewport(f.uuid)
+    );
+    return !viewportFrames.some((f) => isTouching(f.value.box, box));
+  }
+
   // ██╗███╗   ██╗████████╗███████╗██████╗ ███████╗ █████╗  ██████╗███████╗
   // ██║████╗  ██║╚══██╔══╝██╔════╝██╔══██╗██╔════╝██╔══██╗██╔════╝██╔════╝
   // ██║██╔██╗ ██║   ██║   █████╗  ██████╔╝█████╗  ███████║██║     █████╗
@@ -340,10 +381,7 @@ async function createStore() {
     get frames() {
       return frames.all;
     },
-    frameIsInViewport(uuid: string): boolean {
-      // return true;
-      return framesInViewport.indexOf(uuid) !== -1;
-    },
+    frameIsInViewport,
   };
 }
 

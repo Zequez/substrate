@@ -6,35 +6,55 @@
 
   import SS, { type BoxResizeHandles } from "../lib/stores/main.svelte";
   import profiles from "../lib/stores/profiles.svelte";
-  import { type BoxedFrame, type Box } from "../lib/Frame";
+  import { type BoxedFrame, type Box, isTouching } from "../lib/Frame";
   import FrameContent from "./FrameContent.svelte";
+  import GhostBox from "./GhostBox.svelte";
   // import Coral from "./Coral.svelte";
   // import GenericDnaSandbox from "./GenericDnaSandbox.svelte";
 
   const S = SS.store;
   S.mountInit();
 
-  function boxSizeIsEnough(box: Box) {
-    return box.w * box.h >= 4;
-  }
-
-  function resolveFrameBox(uuid: string, frame: BoxedFrame): Box {
-    if (S.currentAction.type === "moveFrame") {
-      if (uuid === S.currentAction.uuid) {
-        return {
-          ...frame.box,
-          x: frame.box.x + S.currentAction.boxDelta.x,
-          y: frame.box.y + S.currentAction.boxDelta.y,
-        };
-      }
-    } else if (S.currentAction.type === "resizeFrame") {
-      if (uuid === S.currentAction.uuid) {
-        return S.currentAction.newBox;
-      }
+  function resolveFrameBox(uuid: string, frame: BoxedFrame): [Box, Box | null] {
+    if (
+      S.currentAction.type === "none" ||
+      S.currentAction.type === "pan" ||
+      S.currentAction.type === "createFrame" ||
+      S.currentAction.uuid !== uuid
+    ) {
+      return [frame.box, null];
     }
 
-    return frame.box;
+    if (S.currentAction.type === "moveFrame") {
+      const resolved = {
+        ...frame.box,
+        x: frame.box.x + S.currentAction.boxDelta.x,
+        y: frame.box.y + S.currentAction.boxDelta.y,
+      };
+      if (!S.currentAction.isValid) {
+        const resolvedValid = {
+          ...frame.box,
+          x: frame.box.x + S.currentAction.lastValidBoxDelta.x,
+          y: frame.box.y + S.currentAction.lastValidBoxDelta.y,
+        };
+        return [resolved, resolvedValid];
+      } else {
+        return [resolved, null];
+      }
+    } else if (S.currentAction.type === "resizeFrame") {
+      return [S.currentAction.lastValidBox, null];
+    } else {
+      return [frame.box, null];
+    }
   }
+
+  $effect(() => {
+    if (S.currentAction.type !== "none") {
+      document.body.classList.add("select-none");
+    } else {
+      document.body.classList.remove("select-none");
+    }
+  });
 </script>
 
 <!-- <GenericDnaInspector /> -->
@@ -135,44 +155,21 @@
   <div class="absolute top-0 left-0 z-40" style={S.ui.transform()}>
     <!-- THE LITTLE SQUARE CURSOR -->
     {#if S.currentAction.type === "none"}
-      {@const box = S.boxInPx(S.mouse.box)}
-      <div
-        style={`
-
-          width: ${box.w}px;
-          height: ${box.h}px;
-          transform: translateX(${box.x}px) translateY(${box.y}px);
-        `}
-        class={cx(
-          "z-30  b-2 absolute top-0 left-0 rounded-md bg-sky-500/10 b-sky-500/60 pointer-events-none"
-        )}
-      ></div>
+      <GhostBox box={S.mouse.box} lighter={true} />
       <!-- THE FRAME SHOWN WHILE DRAGGING FOR CREATION -->
     {:else if S.currentAction.type === "createFrame"}
-      {@const boxValid = boxSizeIsEnough(S.currentAction.boxNormalized)}
-      {@const box = S.boxInPx(S.currentAction.boxNormalized)}
-
-      <div
-        style={`
-          width: ${box.w}px;
-          height: ${box.h}px;
-          transform: translateX(${box.x}px) translateY(${box.y}px);
-        `}
-        class={cx(
-          "z-50  b-2  absolute top-0 left-0 rounded-md pointer-events-none",
-          {
-            "bg-sky-500/10 b-sky-500/60": !boxValid,
-            "bg-sky-500/50 b-sky-500/100": boxValid,
-          }
-        )}
-      ></div>
+      <GhostBox
+        box={S.currentAction.boxNormalized}
+        lighter={!S.currentAction.isValid}
+      />
     {/if}
 
     <!-- ALL THE CREATED FRAMES -->
     {#each Object.entries(S.frames) as [uuid, frameWrapper] (uuid)}
       {#if S.frameIsInViewport(uuid)}
         {@const frame = frameWrapper.value}
-        {@const boxStyle = S.ui.boxStyle(resolveFrameBox(uuid, frame))}
+        {@const [box, validBox] = resolveFrameBox(uuid, frame)}
+        {@const boxStyle = S.ui.boxStyle(box)}
         {@const trashing =
           S.currentAction.type === "moveFrame" &&
           S.currentAction.uuid === uuid &&
@@ -202,6 +199,10 @@
             <FrameContent {frame} {uuid} />
           </div>
         </div>
+
+        {#if validBox}
+          <GhostBox box={validBox} lighter={true} />
+        {/if}
       {/if}
     {/each}
   </div>
