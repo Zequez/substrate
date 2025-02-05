@@ -13,32 +13,44 @@
   let p: { uuid: string; frame: BoxedFrame } = $props();
   const S = SS.store;
 
+  const asset = $derived(p.frame.assetUrl ? assets.V(p.frame.assetUrl) : null);
+
+  let loaded = $state(false);
+  function handleLoadIframe() {
+    loaded = true;
+  }
+
   const resizeHandler = (ev: MouseEvent, handle: BoxResizeHandles) =>
     S.ev.mousedown(ev, ["frame-resize", handle, p.uuid]);
 </script>
 
 {#if p.frame.assetUrl}
-  {@const asset = assets.V(p.frame.assetUrl)}
-
   {#if asset}
     {@const isSubstrateAsset = hashEq(asset.wal.hrl[0], clients.dnaHash)}
     {#if isSubstrateAsset && clients.wal}
       Substrate embed; preventing recursion
-    {:else if S.pos.z > 0.5}
+    {:else if S.pos.z > 0.5 || loaded}
       <iframe
         title="Asset"
         class={cx("absolute top-0 z-30 left-0 h-full w-full rounded-md", {
           "pointer-events-none": S.currentAction.type !== "none",
+          hidden: S.pos.z <= 0.5,
         })}
         src={asset.iframeSrc}
+        onload={handleLoadIframe}
       ></iframe>
-    {:else}
-      {@const asset = assets.V(p.frame.assetUrl)}
-      <div class="absloute top-0 z-30 left-0 h-full rounded-md flexcc">
+    {/if}
+
+    {#if S.pos.z <= 0.5}
+      {@const padding = S.grid.size * S.pos.z * 4}
+      <div
+        style={`padding: ${padding}px`}
+        class="absloute top-0 z-30 left-0 h-full rounded-md flexcc"
+      >
         <img
           src={asset.info.icon_src}
           alt={asset.info.name}
-          class="w-full h-full max-w-20 max-h-20"
+          class="max-w-full max-h-full"
         />
       </div>
     {/if}
