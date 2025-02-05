@@ -170,6 +170,9 @@
       {#if S.frameIsInViewport(uuid)}
         {@const frame = frameWrapper.value}
         {@const [box, validBox] = resolveFrameBox(uuid, frame)}
+        {@const resizing =
+          S.currentAction.type === "resizeFrame" &&
+          S.currentAction.uuid === uuid}
         {@const moving =
           S.currentAction.type === "moveFrame" && S.currentAction.uuid === uuid}
         {@const boxStyle = S.ui.boxStyle(box)}
@@ -185,7 +188,8 @@
         <!-- Shadow only element z-30 => So shadows don't overlap over other frames -->
         <div
           class={cx("absolute top-0 left-0", {
-            "z-30 transition-transform": !moving,
+            "z-30": !moving,
+            "transition-transform": !moving && !resizing,
             "z-50 transition-none": moving,
           })}
           style={boxStyle}
@@ -208,7 +212,8 @@
         <!-- Solid frame element z-40 -->
         <div
           class={cx("absolute top-0 left-0", {
-            "z-40 transition-transform": !moving,
+            "z-40": !moving,
+            "transition-transform": !moving && !resizing,
             "z-60 transition-none": moving,
           })}
           style={boxStyle}
