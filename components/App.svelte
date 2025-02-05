@@ -9,6 +9,7 @@
   import { type BoxedFrame, type Box, isTouching } from "../lib/Frame";
   import FrameContent from "./FrameContent.svelte";
   import GhostBox from "./GhostBox.svelte";
+  import { c, stickyStyle } from "../lib/utils";
   // import Coral from "./Coral.svelte";
   // import GenericDnaSandbox from "./GenericDnaSandbox.svelte";
 
@@ -169,7 +170,13 @@
       {#if S.frameIsInViewport(uuid)}
         {@const frame = frameWrapper.value}
         {@const [box, validBox] = resolveFrameBox(uuid, frame)}
+        {@const moving =
+          S.currentAction.type === "moveFrame" && S.currentAction.uuid === uuid}
         {@const boxStyle = S.ui.boxStyle(box)}
+        {@const transformOriginStyle =
+          S.currentAction.type === "moveFrame"
+            ? `transform-origin: ${S.currentAction.pickX * 100}% ${S.currentAction.pickY * 100}%`
+            : ""}
         {@const trashing =
           S.currentAction.type === "moveFrame" &&
           S.currentAction.uuid === uuid &&
@@ -177,24 +184,46 @@
 
         <!-- Shadow only element z-30 => So shadows don't overlap over other frames -->
         <div
-          class={cx(
-            "absolute top-0 left-0 z-30 rounded-md transition-opacity transition-duration-0 shadow-[0px_0px_2px_3px_#0003]",
-            {
-              "opacity-0 transition-delay-0": trashing,
-              "opacity-100 transition-delay-150": !trashing,
-            }
-          )}
+          class={cx("absolute top-0 left-0", {
+            "z-30 transition-transform": !moving,
+            "z-50 transition-none": moving,
+          })}
           style={boxStyle}
-        ></div>
+        >
+          <div
+            use:stickyStyle={transformOriginStyle}
+            use:c={[
+              "size-full rounded-md",
+              "duration-150 transition-property-[transform,opacity,box-shadow]",
+              {
+                "scale-50": trashing,
+                "shadow-[0px_0px_2px_3px_#0003] scale-100": !moving,
+                "shadow-[0px_0px_2px_3px_#0002,0px_0px_10px_3px_#0005] scale-102":
+                  moving && !trashing,
+              },
+            ]}
+          ></div>
+        </div>
 
         <!-- Solid frame element z-40 -->
-        <div class="absolute top-0 left-0 z-40" style={boxStyle}>
+        <div
+          class={cx("absolute top-0 left-0", {
+            "z-40 transition-transform": !moving,
+            "z-60 transition-none": moving,
+          })}
+          style={boxStyle}
+        >
           <div
-            style={`transform-origin: ${S.currentAction.type === "moveFrame" ? `${S.currentAction.pickX * 100}% ${S.currentAction.pickY * 100}%` : "50% 50%"}`}
-            class={cx(
-              "transition-transform  duration-150 bg-gray-100 b-gray-300 w-full h-full rounded-md shadow-[inset_0px_0px_1px_0px_#0003]",
-              { "scale-50 opacity-70": trashing }
-            )}
+            use:stickyStyle={transformOriginStyle}
+            use:c={[
+              "size-full rounded-md",
+              "duration-150 transition-transform",
+              "bg-gray-100 b-gray-300 shadow-[inset_0px_0px_1px_0px_#0003]",
+              {
+                "scale-50 opacity-30": trashing,
+                "scale-102 opacity-100": moving && !trashing,
+              },
+            ]}
           >
             <FrameContent {frame} {uuid} />
           </div>

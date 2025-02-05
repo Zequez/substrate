@@ -1,4 +1,5 @@
 import { type HoloHash } from "@holochain/client";
+import classnames from "classnames";
 
 export const relativeTimeFormat = (date: Date | number): string => {
   if (typeof date === "number") {
@@ -46,4 +47,31 @@ export function maybeReadLS<T>(key: string, defaultValue: T): T {
   } catch (e) {
     return defaultValue;
   }
+}
+
+export function c(
+  node: HTMLElement,
+  classes: Array<string | { [key: string]: boolean } | null | undefined>
+) {
+  node.className = classnames(...classes);
+
+  return {
+    update(
+      newClasses: Array<string | { [key: string]: boolean } | null | undefined>
+    ) {
+      node.className = classnames(...newClasses);
+    },
+  };
+}
+
+export function stickyStyle(node: HTMLElement, style: string) {
+  node.style.cssText = style;
+
+  return {
+    update(newStyle: string) {
+      if (newStyle) {
+        node.style.cssText = newStyle;
+      }
+    },
+  };
 }

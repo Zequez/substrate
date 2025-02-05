@@ -179,12 +179,12 @@ function uiStore(config: { centerAt: Box | null }) {
     return `transform: translateX(${panX * gridSize * zoom + width / 2}px) translateY(${panY * gridSize * zoom + height / 2}px) scale(${zoom})`;
   }
 
-  function boxStyle(box: Box) {
+  function boxStyle(box: Box, scale: number = 1) {
     const pxBox = boxToPx(box);
     return `
       width: ${pxBox.w}px;
       height: ${pxBox.h}px;
-      transform: translateX(${pxBox.x}px) translateY(${pxBox.y}px);
+      transform: translateX(${pxBox.x}px) translateY(${pxBox.y}px) scale(${scale});
     `;
   }
 

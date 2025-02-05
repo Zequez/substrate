@@ -50,6 +50,7 @@ async function createStore() {
       })
       .map((f) => f.uuid);
   });
+  let lastInteractionUuid = $state<string | null>(null);
 
   const ui = uiStore({ centerAt: frame ? frame.value.box : null });
 
@@ -139,8 +140,11 @@ async function createStore() {
           const [startX, startY] = ui.mouseToGridPos(ev.clientX, ev.clientY);
           const t = (ev.currentTarget as HTMLDivElement).parentElement!;
           const { left, top, width, height } = t.getBoundingClientRect();
+          console.log("AAAA", left, top, width, height);
           const pickX = (ev.clientX - left) / width;
           const pickY = (ev.clientY - top) / height;
+
+          lastInteractionUuid = target[1];
           mouseDown = {
             type: "moveFrame",
             uuid: target[1],
@@ -380,6 +384,9 @@ async function createStore() {
     },
     get frames() {
       return frames.all;
+    },
+    get lastInteractionUuid() {
+      return lastInteractionUuid;
     },
     frameIsInViewport,
   };
