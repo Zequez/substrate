@@ -76,6 +76,12 @@ function uiStore(config: { centerAt: Box | null }) {
 
   function mountInit() {
     onMount(() => {
+      function readViewport() {
+        if (gridEl) {
+          setViewport(gridEl.getBoundingClientRect());
+        }
+      }
+
       let frameId: any;
       if (gridEl) {
         ctx = gridEl.getContext("2d")!;
@@ -84,17 +90,24 @@ function uiStore(config: { centerAt: Box | null }) {
           if (boundingBox.width === 0 || boundingBox.height === 0) {
             frameId = requestAnimationFrame(initializeCanvas); // Retry on the next frame
           } else {
-            width = boundingBox.width;
-            height = boundingBox.height;
-            gridEl.width = width;
-            gridEl.height = height;
+            setViewport(boundingBox);
           }
         }
 
         initializeCanvas(); // Start initialization
       }
 
+      function setViewport(rect: DOMRect) {
+        width = rect.width;
+        height = rect.height;
+        gridEl.width = width;
+        gridEl.height = height;
+      }
+
+      window.addEventListener("resize", readViewport);
+
       return () => {
+        window.removeEventListener("resize", readViewport);
         if (frameId) {
           cancelAnimationFrame(frameId);
         }
