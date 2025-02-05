@@ -65,12 +65,13 @@ export function c(
 }
 
 export function stickyStyle(node: HTMLElement, style: string) {
-  node.style.cssText = style;
+  let oldStyle = node.style.cssText;
+  node.style.cssText = oldStyle + style;
 
   return {
     update(newStyle: string) {
       if (newStyle) {
-        node.style.cssText = newStyle;
+        node.style.cssText = oldStyle + newStyle;
       }
     },
   };

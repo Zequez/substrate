@@ -181,24 +181,31 @@
 {#if S.lastInteractionUuid === uuid}
   {@const resizeHandler = (ev: MouseEvent, handle: BoxResizeHandles) =>
     S.ev.mousedown(ev, ["frame-resize", handle, uuid])}
-  <div
-    bind:this={el}
-    class="absolute top-0 left-0 pointer-events-none z-70"
-    style={boxStyle}
-  >
-    {@render sideControls("t")}
-    {@render sideControls("r")}
-    {@render sideControls("b")}
-    {@render sideControls("l")}
-  </div>
-  <div class="absolute top-0 left-0 z-90 pointer-events-none" style={boxStyle}>
-    <ResizeHandle pos="t" onMouseDown={resizeHandler} />
-    <ResizeHandle pos="tr" onMouseDown={resizeHandler} />
-    <ResizeHandle pos="r" onMouseDown={resizeHandler} />
-    <ResizeHandle pos="br" onMouseDown={resizeHandler} />
-    <ResizeHandle pos="b" onMouseDown={resizeHandler} />
-    <ResizeHandle pos="bl" onMouseDown={resizeHandler} />
-    <ResizeHandle pos="l" onMouseDown={resizeHandler} />
-    <ResizeHandle pos="tl" onMouseDown={resizeHandler} />
-  </div>
+  {#if S.pos.z > 0.5}
+    <div
+      bind:this={el}
+      class="absolute top-0 left-0 pointer-events-none z-70"
+      style={boxStyle}
+    >
+      {@render sideControls("t")}
+      {@render sideControls("r")}
+      {@render sideControls("b")}
+      {@render sideControls("l")}
+    </div>
+  {/if}
+  {#if S.pos.z > 0.2 && !S.currentActionIs("moveFrame", "createFrame", "resizeFrame")}
+    <div
+      class="absolute top-0 left-0 z-90 pointer-events-none"
+      style={boxStyle}
+    >
+      <ResizeHandle pos="t" onMouseDown={resizeHandler} />
+      <ResizeHandle pos="tr" onMouseDown={resizeHandler} />
+      <ResizeHandle pos="r" onMouseDown={resizeHandler} />
+      <ResizeHandle pos="br" onMouseDown={resizeHandler} />
+      <ResizeHandle pos="b" onMouseDown={resizeHandler} />
+      <ResizeHandle pos="bl" onMouseDown={resizeHandler} />
+      <ResizeHandle pos="l" onMouseDown={resizeHandler} />
+      <ResizeHandle pos="tl" onMouseDown={resizeHandler} />
+    </div>
+  {/if}
 {/if}

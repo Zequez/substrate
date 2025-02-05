@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { type BoxResizeHandles } from "../lib/stores";
+  import SS, { type BoxResizeHandles } from "../lib/stores/main.svelte";
+  const S = SS.store;
+
   const props: {
     pos: BoxResizeHandles;
     onMouseDown: (e: MouseEvent, pos: BoxResizeHandles) => void;
@@ -30,11 +32,25 @@
       br: "-bottom-1 -right-1 w4 h4  cursor-nwse-resize z-100",
     }[props.pos]
   );
+
+  const boxScale = $derived(
+    {
+      t: "scaleY",
+      b: "scaleY",
+      l: "scaleX",
+      r: "scaleX",
+      tl: "scale",
+      tr: "scale",
+      bl: "scale",
+      br: "scale",
+    }[props.pos]
+  );
 </script>
 
 <button
   aria-label={`Resize frame ${label}`}
   class={`absolute pointer-events-auto ${boxClass} hover:bg-black/20 active:bg-black/10`}
+  style={`transform: ${boxScale}(${1 / S.pos.z})`}
   onmousedown={(ev) => props.onMouseDown(ev, props.pos)}
 >
 </button>

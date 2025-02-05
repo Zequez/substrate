@@ -201,7 +201,7 @@
           <div
             use:stickyStyle={transformOriginStyle}
             use:c={[
-              "size-full rounded-md",
+              "size-full",
               "duration-150 transition-property-[transform,opacity,box-shadow]",
               {
                 "scale-50": trashing,
@@ -210,6 +210,7 @@
                   moving && !trashing,
               },
             ]}
+            style={`border-radius: ${(1 / S.pos.z) * 6}px`}
           ></div>
         </div>
 
@@ -224,9 +225,10 @@
           style={boxStyle}
         >
           <div
+            style={`border-radius: ${(1 / S.pos.z) * 6}px`}
             use:stickyStyle={transformOriginStyle}
             use:c={[
-              "size-full rounded-md",
+              "size-full",
               "duration-150 transition-transform",
               "bg-gray-100 b-gray-300 shadow-[inset_0px_0px_1px_0px_#0003]",
               {
@@ -240,7 +242,7 @@
         </div>
 
         {#if validBox}
-          <GhostBox box={validBox} lighter={true} />
+          <GhostBox box={validBox} lighter={false} />
         {/if}
 
         <FrameInteracting {frame} {uuid} {boxStyle} />

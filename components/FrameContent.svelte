@@ -1,4 +1,5 @@
 <script lang="ts">
+  import MoveIcon from "~icons/fa6-solid/arrows-up-down-left-right";
   import cx from "classnames";
   import { type BoxedFrame } from "../lib/Frame";
   import assets from "../lib/stores/assets.svelte";
@@ -15,6 +16,13 @@
   function handleLoadIframe() {
     loaded = true;
   }
+
+  const minDimension = $derived(Math.min(p.frame.box.w, p.frame.box.h));
+  const frameIconPadding = $derived(
+    S.grid.size *
+      S.pos.z *
+      (minDimension <= 4 ? (minDimension <= 2 ? 1 : 2) : 4)
+  );
 </script>
 
 {#if p.frame.assetUrl}
@@ -35,10 +43,9 @@
     {/if}
 
     {#if S.pos.z <= 0.5}
-      {@const padding = S.grid.size * S.pos.z * 4}
       <div
-        style={`padding: ${padding}px`}
-        class="absloute top-0 z-30 left-0 h-full rounded-md flexcc"
+        style={`padding: ${frameIconPadding}px`}
+        class="absolute top-0 z-30 left-0 h-full flexcc opacity-75"
       >
         <img
           src={asset.info.icon_src}
@@ -50,7 +57,7 @@
   {:else}
     Loading...
   {/if}
-{:else}
+{:else if S.pos.z > 0.5}
   <div class="p4">
     <div>
       <input
@@ -60,8 +67,20 @@
         placeholder="Search, or enter URL"
       />
       <!-- <button class="bg-green-500 text-white rounded-full p2"
-                  ><CheckIcon /></button
-                > -->
+                    ><CheckIcon /></button
+                  > -->
     </div>
   </div>
+{/if}
+
+{#if S.pos.z <= 0.5}
+  <button
+    style={`padding: ${frameIconPadding}px`}
+    class="size-full z-100 absolute top-0 left-0 cursor-move flexcc text-black/25"
+    onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", p.uuid])}
+  >
+    {#if !asset}
+      <MoveIcon class="size-full max-w-full max-h-full" />
+    {/if}
+  </button>
 {/if}
