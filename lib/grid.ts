@@ -15,8 +15,8 @@ export function renderGrid(
   // const gridSize = (zoom > 1 ? 15 : zoom === 0.5 ? 60 : 30) * zoom;
   const gridSize = size * zoom;
 
-  const physicalPanX = panX * zoom + width / 2;
-  const physicalPanY = panY * zoom + height / 2;
+  const physicalPanX = panX * size * zoom + width / 2;
+  const physicalPanY = panY * size * zoom + height / 2;
 
   // Clear the canvas
   ctx.clearRect(0, 0, width, height);

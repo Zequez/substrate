@@ -1,6 +1,7 @@
 import { onMount } from "svelte";
 import type { Box } from "../../lib/Frame";
 import { renderGrid } from "../../lib/grid";
+import { maybeReadLS } from "../../lib/utils";
 
 function uiStore(config: { centerAt: Box | null }) {
   const gridSize = 30;
@@ -15,31 +16,30 @@ function uiStore(config: { centerAt: Box | null }) {
 
   const zoomPanLSKey = "ZPXPY";
 
-  const defaults = (function () {
+  const initialPos = (() => {
     if (config.centerAt) {
       const { x, y, w, h } = config.centerAt;
       console.log("Setting zoom and pan to be centered on linked frame");
-      // Find center of frame
-      const val = {
+      return {
         zoom: 1,
-        panX: -(x + w / 2) * gridSize,
-        panY: -(y + h / 2) * gridSize,
+        panX: -(x + w / 2),
+        panY: -(y + h / 2),
       };
-      console.log("Centering FRAME", val);
-      return val;
     } else {
-      const def = { zoom: 1, panX: 0, panY: 0 };
-      try {
-        return JSON.parse(localStorage.getItem(zoomPanLSKey)!) || def;
-      } catch (e) {
-        return def;
-      }
+      return maybeReadLS(zoomPanLSKey, { zoom: 1, panX: 0, panY: 0 });
     }
   })();
 
-  $effect.root(() => {
-    let timeout: any = 0;
-    if (!config.centerAt) {
+  console.log("INITIAL POS", initialPos);
+
+  let zoom = $state(initialPos.zoom);
+  let panX = $state(initialPos.panX);
+  let panY = $state(initialPos.panY);
+
+  // If no centerAt is provided, save zoom and pan when they change
+  if (!config.centerAt) {
+    $effect.root(() => {
+      let timeout: any = 0;
       $effect(() => {
         // Make dependency explicit otherwise doesn't work because $effect.root
         [zoom, panX, panY];
@@ -51,12 +51,9 @@ function uiStore(config: { centerAt: Box | null }) {
           );
         }, 100);
       });
-    }
-  });
+    });
+  }
 
-  let zoom = $state(defaults.zoom);
-  let panX = $state(defaults.panX);
-  let panY = $state(defaults.panY);
   let zWidth = $derived(width * zoom);
   let zHeight = $derived(height * zoom);
 
@@ -75,12 +72,12 @@ function uiStore(config: { centerAt: Box | null }) {
       if (gridEl) {
         ctx = gridEl.getContext("2d")!;
         function initializeCanvas() {
-          const box = gridEl.getBoundingClientRect();
-          if (box.width === 0 || box.height === 0) {
+          const boundingBox = gridEl.getBoundingClientRect();
+          if (boundingBox.width === 0 || boundingBox.height === 0) {
             frameId = requestAnimationFrame(initializeCanvas); // Retry on the next frame
           } else {
-            width = box.width;
-            height = box.height;
+            width = boundingBox.width;
+            height = boundingBox.height;
             gridEl.width = width;
             gridEl.height = height;
           }
@@ -111,8 +108,12 @@ function uiStore(config: { centerAt: Box | null }) {
   }
 
   function mouseToGridPos(x: number, y: number) {
-    const gridX = Math.floor((x - zPanX - width / 2) / zGridSize);
-    const gridY = Math.floor((y - zPanY - height / 2) / zGridSize);
+    const gridX = Math.floor(
+      (x - panX * zoom * gridSize - width / 2) / gridSize / zoom
+    );
+    const gridY = Math.floor(
+      (y - panY * zoom * gridSize - height / 2) / gridSize / zoom
+    );
     return [gridX, gridY];
   }
 
@@ -123,7 +124,7 @@ function uiStore(config: { centerAt: Box | null }) {
     return [relativeX, relativeY] as [number, number];
   }
 
-  const boxInPx = (box: Box): Box => ({
+  const boxToPx = (box: Box): Box => ({
     x: box.x * gridSize,
     y: box.y * gridSize,
     w: box.w * gridSize,
@@ -139,43 +140,52 @@ function uiStore(config: { centerAt: Box | null }) {
     const zoomDelta = 1 - processedZoom / zoom;
     if (zoomDelta !== 0) {
       const screenPos = screenToCanvasPos(centerX, centerY);
-      panX += (screenPos[0] * zoomDelta) / processedZoom;
-      panY += (screenPos[1] * zoomDelta) / processedZoom;
+      panX += (screenPos[0] * zoomDelta) / processedZoom / gridSize;
+      panY += (screenPos[1] * zoomDelta) / processedZoom / gridSize;
     }
     zoom = processedZoom;
   }
 
   function setMinZoomToFitBox(box: Box) {
-    const w = box.w * gridSize + gridSize * 5;
-    const h = box.h * gridSize + gridSize * 5;
+    const w = (box.w + 5) * gridSize;
+    const h = (box.h + 5) * gridSize;
     const zoomForW = width / w;
     const zoomForH = height / h;
     minZoom = Math.min(zoomForW, zoomForH, 0.5);
   }
 
   function panZoomToFit(box: Box) {
-    const w = box.w * gridSize + gridSize * 5;
-    const h = box.h * gridSize + gridSize * 5;
+    const w = (box.w + 5) * gridSize;
+    const h = (box.h + 5) * gridSize;
     const zoomForW = width / w;
     const zoomForH = height / h;
     const newZoom = Math.min(zoomForW, zoomForH, 0.5);
-    // const centerX = ;
-    // const centerY = height / 2;
     zoom = newZoom;
-    const newPanX = (box.x + box.w / 2 + 2.5) * gridSize - zWidth / 2;
-    const newPanY = (box.y + box.h / 2 + 2.5) * gridSize - zHeight / 2;
-    console.log("PAN", newPanX, newPanY);
+    const newPanX = box.x + box.w / 2 + 2.5 - (width * zoom) / gridSize / 2;
+    const newPanY = box.y + box.h / 2 + 2.5 - (height * zoom) / gridSize / 2;
     panX = -newPanX;
     panY = -newPanY;
-    // console.log(panX, panY);
-    // console.log("ZOOM", zoom, centerX, centerY);
-    // setZoom(zoom, centerX, centerY);
+  }
+
+  function transform() {
+    return `transform: translateX(${panX * gridSize * zoom + width / 2}px) translateY(${panY * gridSize * zoom + height / 2}px) scale(${zoom})`;
+  }
+
+  function boxStyle(box: Box) {
+    const pxBox = boxToPx(box);
+    return `
+      width: ${pxBox.w}px;
+      height: ${pxBox.h}px;
+      transform: translateX(${pxBox.x}px) translateY(${pxBox.y}px);
+    `;
   }
 
   return {
     mountInit,
     setMinZoomToFitBox,
     panZoomToFit,
+    transform,
+    boxStyle,
     grid: {
       get el() {
         return gridEl;
@@ -188,7 +198,7 @@ function uiStore(config: { centerAt: Box | null }) {
         return zGridSize;
       },
       toPx: (n: number) => n * gridSize,
-      boxInPx,
+      boxToPx,
     },
     pos: {
       get z() {
@@ -229,8 +239,8 @@ function uiStore(config: { centerAt: Box | null }) {
         mouseY = y;
       },
       pan(deltaX: number, deltaY: number) {
-        panX = panX + deltaX / zoom;
-        panY = panY + deltaY / zoom;
+        panX = panX + deltaX / zoom / gridSize;
+        panY = panY + deltaY / zoom / gridSize;
       },
       get gridX() {
         return mouseGridX;
@@ -248,3 +258,5 @@ function uiStore(config: { centerAt: Box | null }) {
 }
 
 export default uiStore;
+
+// Utils

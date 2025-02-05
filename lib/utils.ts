@@ -39,3 +39,11 @@ export function hashSlice(hash: string, num: number) {
 export function hashEq(a: HoloHash, b: HoloHash) {
   return indexedDB.cmp(a, b) === 0;
 }
+
+export function maybeReadLS<T>(key: string, defaultValue: T): T {
+  try {
+    return (JSON.parse(localStorage.getItem(key)!) as T) || defaultValue;
+  } catch (e) {
+    return defaultValue;
+  }
+}

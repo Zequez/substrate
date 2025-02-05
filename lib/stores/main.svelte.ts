@@ -42,6 +42,43 @@ async function createStore() {
   const fitAllBox = $derived(
     containingBox(Object.values(frames.all).map((f) => f.value.box))
   );
+  const VIEWPORT_RENDER_DISTANCE = 1.25;
+  const framesInViewport: string[] = $derived.by(() => {
+    console.log("VIEWPORT X", ui.grid.size * ui.pos.x);
+    console.log("VIEWPORT Y", ui.grid.size * ui.pos.y);
+    return Object.values(frames.all)
+      .filter((f) => {
+        const box = f.value.box;
+        const center = [box.x + box.w / 2, box.y + box.h / 2];
+        const dx = center[0] - ui.pos.x / ui.grid.zSize;
+        const dy = center[1] - ui.pos.y / ui.grid.zSize;
+        const viewportRadius =
+          (Math.sqrt(ui.pos.w * ui.pos.w + ui.pos.h * ui.pos.h) /
+            2 /
+            ui.grid.zSize) *
+          VIEWPORT_RENDER_DISTANCE;
+        console.log("VIEWPORT RADIUS", viewportRadius);
+
+        return dx * dx + dy * dy < viewportRadius * viewportRadius;
+
+        // if the distance to center
+
+        // console.log("Distance to box", dx, dy);
+        // const vptl = [ui.pos.w];
+        // const vpbr = [ui.pos.h];
+        // const vpTl = [ui.pos.x - ui.pos.w / 2, ui.pos.y - ui.pos.h / 2];
+        // const vpBr = [ui.pos.x + ui.pos.w / 2, ui.pos.y + ui.pos.h / 2];
+
+        // return (
+        //   box.x < ui.mouse.gridX + ui.mouse.gridW &&
+        //   box.y < ui.mouse.gridY + ui.mouse.gridH &&
+        //   box.x + box.w > ui.mouse.gridX &&
+        //   box.y + box.h > ui.mouse.gridY
+        // );
+        return f;
+      })
+      .map((f) => f.uuid);
+  });
 
   const ui = uiStore({ centerAt: frame ? frame.value.box : null });
 
@@ -242,6 +279,7 @@ async function createStore() {
             assetUrl: "",
             split: null,
           };
+          console.log("NEW FRAME!", newFrame.box);
           frames.create(newFrame);
         }
         break;
@@ -318,15 +356,22 @@ async function createStore() {
       resetZoom: () => ui.pos.setZoom(1),
     },
     ui,
-    boxInPx: ui.grid.boxInPx,
+    boxInPx: ui.grid.boxToPx,
     pos: ui.pos,
     grid: ui.grid,
     mouse: ui.mouse,
     get currentAction() {
       return mouseDown;
     },
+    currentActionIs(...actionTypes: MouseDownActions["type"][]) {
+      return actionTypes.indexOf(mouseDown.type) !== -1;
+    },
     get frames() {
       return frames.all;
+    },
+    frameIsInViewport(uuid: string): boolean {
+      return true;
+      // return framesInViewport.indexOf(uuid) !== -1;
     },
   };
 }
