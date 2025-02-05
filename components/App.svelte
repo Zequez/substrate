@@ -1,15 +1,17 @@
 <script lang="ts">
   import cx from "classnames";
   import TrashIcon from "~icons/fa6-solid/trash";
-
   import SquareIcon from "~icons/fa6-regular/square";
 
   import SS, { type BoxResizeHandles } from "../lib/stores/main.svelte";
   import profiles from "../lib/stores/profiles.svelte";
+  import assets from "../lib/stores/assets.svelte";
   import { type BoxedFrame, type Box, isTouching } from "../lib/Frame";
   import FrameContent from "./FrameContent.svelte";
+  import FrameInteracting from "./FrameInteracting.svelte";
   import GhostBox from "./GhostBox.svelte";
   import { c, stickyStyle } from "../lib/utils";
+  import ResizeHandle from "./ResizeHandle.svelte";
   // import Coral from "./Coral.svelte";
   // import GenericDnaSandbox from "./GenericDnaSandbox.svelte";
 
@@ -156,7 +158,9 @@
   <div class="absolute top-0 left-0 z-40" style={S.ui.transform()}>
     <!-- THE LITTLE SQUARE CURSOR -->
     {#if S.currentAction.type === "none"}
-      <GhostBox box={S.mouse.box} lighter={true} />
+      {#if S.isOnGrid}
+        <GhostBox box={S.mouse.box} lighter={true} />
+      {/if}
       <!-- THE FRAME SHOWN WHILE DRAGGING FOR CREATION -->
     {:else if S.currentAction.type === "createFrame"}
       <GhostBox
@@ -215,6 +219,7 @@
             "z-40": !moving,
             "transition-transform": !moving && !resizing,
             "z-60 transition-none": moving,
+            "z-80": S.lastInteractionUuid === uuid,
           })}
           style={boxStyle}
         >
@@ -237,6 +242,8 @@
         {#if validBox}
           <GhostBox box={validBox} lighter={true} />
         {/if}
+
+        <FrameInteracting {frame} {uuid} {boxStyle} />
       {/if}
     {/each}
   </div>

@@ -144,7 +144,6 @@ async function createStore() {
           const pickX = (ev.clientX - left) / width;
           const pickY = (ev.clientY - top) / height;
 
-          lastInteractionUuid = target[1];
           mouseDown = {
             type: "moveFrame",
             uuid: target[1],
@@ -204,9 +203,13 @@ async function createStore() {
   // MOUSE MOVE
   /************************************** */
 
+  let isOnGrid = $state(false);
+
   function handleMouseMove(ev: MouseEvent, target?: ["trash"]) {
     // console.log("Mouse move, target: ", target);
     ui.mouse.setXY(ev.clientX, ev.clientY);
+
+    isOnGrid = ev.target === ui.grid.el;
 
     switch (mouseDown.type) {
       case "pan":
@@ -315,6 +318,14 @@ async function createStore() {
   }
 
   /************************************** */
+  // MOUSE OVER
+  /************************************** */
+
+  function handleMouseOver(ev: MouseEvent, target: string) {
+    lastInteractionUuid = target;
+  }
+
+  /************************************** */
   // CLICK
   /************************************** */
 
@@ -369,6 +380,7 @@ async function createStore() {
       mousemove: handleMouseMove,
       mouseup: handleMouseUp,
       wheel: handleWheel,
+      mouseover: handleMouseOver,
       resetZoom: () => ui.pos.setZoom(1),
     },
     ui,
@@ -378,6 +390,9 @@ async function createStore() {
     mouse: ui.mouse,
     get currentAction() {
       return mouseDown;
+    },
+    get isOnGrid() {
+      return isOnGrid;
     },
     currentActionIs(...actionTypes: MouseDownActions["type"][]) {
       return actionTypes.indexOf(mouseDown.type) !== -1;

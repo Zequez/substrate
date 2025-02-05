@@ -78,6 +78,7 @@ export default {
   //   return assetsMap;
   // },
   V(key: string) {
+    if (!key) return null;
     loadAsset(key);
     return assetsMap[key];
   },
