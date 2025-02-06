@@ -1,17 +1,20 @@
 import { defineConfig } from "wdc";
 
 export default defineConfig({
-  version: "0.1.1",
+  version: "0.1.2",
   id: "substrate",
   changeLog: `
-# 0.1.0
-  - There is an infinite grid-based canvas you can pan and zoom
-  - You can drag squares to create frames that can have embedded Weave assets
-  - You can resize, move and delete the frames
-  - Frames are synced automatically to every group member
-  - Uses Generic DNA as Holochain backend
-  - Uses Svelte 5 for UI
-  - Uses Weave Dev Context for development environment
+# 0.1.2
+  - Extracted most canvas UI-related states out of the main store
+  - Added max zoom out button that zooms out and pans so that all frames are visible simuntaneously
+  - Adjust max zoom out so that all frames can be visible simultaneosly on the maximum zoom out
+  - Added optimization so only frames in the viewport are rendered
+  - Added optimization so assets are not loaded when far out of the zoom level
+  - Make it so frames cannot be overlapped
+  - The resize handles are now zoom-level adapted and disabled during very far zoom out
+  - At <=0.5 zoom frames turn into move-only mode and you can just drag them from anywhere
+  - Fixed grid not rendering on first app start
+  - Added new frame controls that are hidden and show at the edge of the frame when hovering (only at >0.5 zoom)
 # 0.1.1
   - Fixed a bug that caused syncing between peers not to work
   - You can now add frames to pocket and embed instances of Substrate that are centered around that Frame
@@ -21,6 +24,15 @@ export default defineConfig({
   - Made the canvas (0,0) position be at the center of the screen
   - Made shadows all share the same z-index so they don't overlap
   - Added provision to disable pointer events on iframes while dragging so the panning doesn't get stuck
+# 0.1.0
+  - There is an infinite grid-based canvas you can pan and zoom
+  - You can drag squares to create frames that can have embedded Weave assets
+  - You can resize, move and delete the frames
+  - Frames are synced automatically to every group member
+  - Uses Generic DNA as Holochain backend
+  - Uses Svelte 5 for UI
+  - Uses Weave Dev Context for development environment
+
   `,
   name: "Substrate",
   subtitle: "Embed Weave assets on a canvas",
