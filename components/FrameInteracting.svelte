@@ -178,7 +178,7 @@
 ></div>
 
 <!-- FLOATING INFO/CONTROLS -->
-{#if S.lastInteractionUuid === uuid}
+{#if S.lastInteractionUuid === uuid && !S.currentActionIs("resizeFrame", "pan")}
   {@const resizeHandler = (ev: MouseEvent, handle: BoxResizeHandles) =>
     S.ev.mousedown(ev, ["frame-resize", handle, uuid])}
   {#if S.pos.z > 0.5}
