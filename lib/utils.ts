@@ -64,14 +64,16 @@ export function c(
   };
 }
 
+const oldStyles = new Map<HTMLElement, string>();
 export function stickyStyle(node: HTMLElement, style: string) {
   let oldStyle = node.style.cssText;
+  oldStyles.set(node, oldStyle);
   node.style.cssText = oldStyle + style;
 
   return {
     update(newStyle: string) {
       if (newStyle) {
-        node.style.cssText = oldStyle + newStyle;
+        node.style.cssText = oldStyles.get(node) + newStyle;
       }
     },
   };

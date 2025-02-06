@@ -78,23 +78,9 @@ function uiStore(config: { centerAt: Box | null }) {
     onMount(() => {
       function readViewport() {
         if (gridEl) {
+          console.log("Setting viewport");
           setViewport(gridEl.getBoundingClientRect());
         }
-      }
-
-      let frameId: any;
-      if (gridEl) {
-        ctx = gridEl.getContext("2d")!;
-        function initializeCanvas() {
-          const boundingBox = gridEl.getBoundingClientRect();
-          if (boundingBox.width === 0 || boundingBox.height === 0) {
-            frameId = requestAnimationFrame(initializeCanvas); // Retry on the next frame
-          } else {
-            setViewport(boundingBox);
-          }
-        }
-
-        initializeCanvas(); // Start initialization
       }
 
       function setViewport(rect: DOMRect) {
@@ -103,6 +89,20 @@ function uiStore(config: { centerAt: Box | null }) {
         gridEl.width = width;
         gridEl.height = height;
       }
+
+      let frameId: any;
+      ctx = gridEl!.getContext("2d")!;
+      function initializeCanvas() {
+        const boundingBox = gridEl!.getBoundingClientRect();
+        if (boundingBox.width === 0 || boundingBox.height === 0) {
+          frameId = requestAnimationFrame(initializeCanvas); // Retry on the next frame
+        } else {
+          setViewport(boundingBox);
+          doRenderGrid();
+        }
+      }
+
+      initializeCanvas(); // Start initialization
 
       window.addEventListener("resize", readViewport);
 
@@ -114,18 +114,21 @@ function uiStore(config: { centerAt: Box | null }) {
       };
     });
 
-    $effect(() => {
-      if (!ctx) return;
-      renderGrid(ctx, {
-        width,
-        height,
-        zoom,
-        panX,
-        panY,
-        color: "#fff3",
-        size: gridSize,
-      });
-    });
+    function doRenderGrid() {
+      if (ctx && width && height && gridEl.width && gridEl.height) {
+        renderGrid(ctx, {
+          width,
+          height,
+          zoom,
+          panX,
+          panY,
+          color: "#fff3",
+          size: gridSize,
+        });
+      }
+    }
+
+    $effect(doRenderGrid);
   }
 
   function mouseToGridPos(x: number, y: number) {

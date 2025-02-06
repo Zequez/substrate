@@ -12,6 +12,7 @@ export function renderGrid(
 ) {
   const { width, height, color, panX, panY, zoom, size } = config;
 
+  console.log("Rendering grid", config, ctx.canvas.width, ctx.canvas.height);
   // const gridSize = (zoom > 1 ? 15 : zoom === 0.5 ? 60 : 30) * zoom;
   const gridSize = size * zoom;
 
@@ -70,32 +71,4 @@ export function renderGrid(
     ctx.lineTo(width, centerY);
     ctx.stroke();
   }
-}
-
-type Rect = {
-  startX: number;
-  startY: number;
-  endX: number;
-  endY: number;
-};
-export function adjustRectToGrid(
-  rect: Rect,
-  gridConfig: {
-    size: number;
-    zoom: number;
-    panX: number;
-    panY: number;
-  }
-): Rect {
-  const { startX, startY, endX, endY } = rect;
-  const { size, zoom, panX, panY } = gridConfig;
-  const gridSize = size * zoom;
-  const physicalPanX = panX * zoom;
-  const physicalPanY = panY * zoom;
-  return {
-    startX: Math.floor((startX - physicalPanX) / gridSize) * gridSize,
-    startY: Math.floor((startY - physicalPanY) / gridSize) * gridSize,
-    endX: Math.ceil((endX - physicalPanX) / gridSize) * gridSize,
-    endY: Math.ceil((endY - physicalPanY) / gridSize) * gridSize,
-  };
 }
