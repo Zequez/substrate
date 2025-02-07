@@ -2,16 +2,16 @@
   import cx from "classnames";
   import TrashIcon from "~icons/fa6-solid/trash";
   import SquareIcon from "~icons/fa6-regular/square";
+  import ExpandIcon from "~icons/fa6-solid/expand";
+  import CompressIcon from "~icons/fa6-solid/compress";
 
-  import SS, { type BoxResizeHandles } from "../lib/stores/main.svelte";
+  import SS from "../lib/stores/main.svelte";
   import profiles from "../lib/stores/profiles.svelte";
-  import assets from "../lib/stores/assets.svelte";
   import { type BoxedFrame, type Box, isTouching } from "../lib/Frame";
   import FrameContent from "./FrameContent.svelte";
   import FrameInteracting from "./FrameInteracting.svelte";
   import GhostBox from "./GhostBox.svelte";
   import { c, stickyStyle } from "../lib/utils";
-  import ResizeHandle from "./ResizeHandle.svelte";
   // import Coral from "./Coral.svelte";
   // import GenericDnaSandbox from "./GenericDnaSandbox.svelte";
 
@@ -65,7 +65,7 @@
 
 <!-- PROFILES -->
 
-<div class="absolute top-0 right-0 bg-blue-500 rounded-bl-md">
+<div class="absolute top-0 right-0 bg-blue-500 rounded-bl-md z-120">
   {#each Object.entries(profiles.participantsProfiles) as [agent, profile]}
     {#if profile === "unknown" || profile === "none"}
       {agent.slice(0, 5)}
@@ -132,6 +132,12 @@
       <SquareIcon />
     </button>
   {/if}
+  <button
+    title="Enter full screen mode"
+    class="bg-white px2 py1 rounded-md text-xs hover:bg-gray-100"
+    onclick={(ev) => S.ev.mousedown(ev, ["toggle-fullscreen"])}
+    >{#if S.isInFullscreen}<CompressIcon />{:else}<ExpandIcon />{/if}</button
+  >
 </div>
 
 <!-- ZOOMABLE PANABLE CANVAS -->

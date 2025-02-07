@@ -46,7 +46,7 @@ import { type AppClient } from "@holochain/client";
   await S.initialize();
 
   mount(App, {
-    target: document.body,
+    target: document.getElementById("app")!,
     props: {},
   });
 })();

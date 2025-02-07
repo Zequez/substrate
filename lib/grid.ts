@@ -12,7 +12,6 @@ export function renderGrid(
 ) {
   const { width, height, color, panX, panY, zoom, size } = config;
 
-  console.log("Rendering grid", config, ctx.canvas.width, ctx.canvas.height);
   // const gridSize = (zoom > 1 ? 15 : zoom === 0.5 ? 60 : 30) * zoom;
   const gridSize = size * zoom;
 

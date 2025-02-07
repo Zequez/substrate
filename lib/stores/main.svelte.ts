@@ -1,4 +1,3 @@
-import { onMount } from "svelte";
 import {
   type BoxedFrame,
   type Box,
@@ -7,7 +6,6 @@ import {
   containingBox,
   isTouching,
 } from "../Frame";
-import { renderGrid } from "../grid";
 
 // Sub-states
 import thingsStore from "./things";
@@ -27,6 +25,8 @@ export type BoxResizeHandles =
   | "bl";
 
 async function createStore() {
+  const appEl = document.getElementById("app")!;
+
   type FramesStore = ReturnType<
     typeof thingsStore.typeOfThing<"BoxedFrame", BoxedFrame>
   >;
@@ -51,6 +51,7 @@ async function createStore() {
       .map((f) => f.uuid);
   });
   let lastInteractionUuid = $state<string | null>(null);
+  let isInFullscreen = $state<boolean>(!!document.fullscreenElement);
 
   const ui = uiStore({ centerAt: frame ? frame.value.box : null });
 
@@ -67,6 +68,49 @@ async function createStore() {
 
     $effect(() => {
       ui.setMinZoomToFitBox(fitAllBox);
+    });
+
+    appEl.addEventListener("fullscreenchange", (ev) => {
+      isInFullscreen = !!document.fullscreenElement;
+    });
+
+    let timeoutId: any = null;
+    const panSize = (ui.grid.size * 2) / 1.5;
+    const edge = 10;
+    function processFullscreenEdgePanning() {
+      const x = ui.mouse.clientX;
+      const y = ui.mouse.clientY;
+      const w = ui.width;
+      const h = ui.height;
+      if (x <= edge * 2 && y <= edge * 2) {
+        ui.mouse.pan(panSize, panSize);
+      } else if (x >= w - edge * 2 && y <= edge * 2) {
+        ui.mouse.pan(-panSize, panSize);
+      } else if (x <= edge * 2 && y >= h - edge * 2) {
+        ui.mouse.pan(panSize, -panSize);
+      } else if (x >= w - edge * 2 && y >= h - edge * 2) {
+        ui.mouse.pan(-panSize, -panSize);
+      } else if (x <= edge) {
+        ui.mouse.pan(panSize, 0);
+      } else if (x >= w - edge) {
+        ui.mouse.pan(-panSize, 0);
+      } else if (y <= edge) {
+        ui.mouse.pan(0, panSize);
+      } else if (y >= h - edge) {
+        ui.mouse.pan(0, -panSize);
+      }
+      timeoutId = setTimeout(processFullscreenEdgePanning, 25);
+    }
+
+    $effect(() => {
+      if (isInFullscreen) {
+        if (!timeoutId) {
+          processFullscreenEdgePanning();
+        }
+      } else {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
     });
   }
 
@@ -118,6 +162,7 @@ async function createStore() {
       | ["copy-link", string]
       | ["remove-asset", string]
       | ["fit-all"]
+      | ["toggle-fullscreen"]
   ) {
     // console.log("Mouse down", target);
     if (target) {
@@ -129,7 +174,9 @@ async function createStore() {
           const [wal, url] = frames.link(target[1]);
           if (url && wal) {
             navigator.clipboard.writeText(url);
-            clients.weave.assets.assetToPocket(wal);
+            if (clients.weave) {
+              clients.weave.assets.assetToPocket(wal);
+            }
           } else {
             alert("Frame isn't on the network yet");
           }
@@ -183,6 +230,15 @@ async function createStore() {
         }
         case "fit-all": {
           ui.panZoomToFit(fitAllBox);
+          break;
+        }
+        case "toggle-fullscreen": {
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+          } else {
+            appEl.requestFullscreen();
+          }
+          break;
         }
       }
     } else {
@@ -402,6 +458,9 @@ async function createStore() {
     },
     get lastInteractionUuid() {
       return lastInteractionUuid;
+    },
+    get isInFullscreen() {
+      return isInFullscreen;
     },
     frameIsInViewport,
   };

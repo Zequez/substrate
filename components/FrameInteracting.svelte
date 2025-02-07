@@ -1,15 +1,11 @@
 <script lang="ts">
-  import LinkIcon from "~icons/fa6-solid/link";
-  import CircleMinusIcon from "~icons/fa6-solid/circle-minus";
-  import CirclePlusIcon from "~icons/fa6-solid/circle-plus";
-  import MoveIcon from "~icons/fa6-solid/arrows-up-down-left-right";
   import { fly } from "svelte/transition";
   import { linear } from "svelte/easing";
   import { c } from "../lib/utils";
   import SS, { type BoxResizeHandles } from "../lib/stores/main.svelte";
-  import assets from "../lib/stores/assets.svelte";
   import { type BoxedFrame } from "../lib/Frame";
   import ResizeHandle from "./ResizeHandle.svelte";
+  import FrameMenu from "./FrameMenu.svelte";
   const {
     uuid,
     boxStyle,
@@ -110,54 +106,7 @@
         class="flex {sideStyleInner} pointer-events-auto bg-black/10 p2"
         style="transform: scale({(1 / S.pos.z) * 0.8});"
       >
-        {#if frame.assetUrl}
-          {@const asset = assets.V(frame.assetUrl)}
-          {#if asset}
-            <div class="flexcs text-white relative">
-              <button
-                class="h-10 w-10 px2 relative z-20 flexcc text-black/60 bg-white rounded-full hover:text-red-500"
-                onclick={(ev) => S.ev.mousedown(ev, ["remove-asset", uuid])}
-              >
-                <CircleMinusIcon />
-              </button>
-              <!-- <div
-                class="absolute top-1/2 -translate-y-1/2 left-10 z-10 bg-black/20 b b-black/10 flexcs -ml2 rounded-r-md"
-              >
-                <div class="w6 h6 p1 ml2">
-                  <img
-                    alt="Asset icon"
-                    src={asset.info.icon_src}
-                    class="w-full w-full pointer-events-none"
-                  />
-                </div>
-                <span class="text-sm mr1">{asset.info.name}</span>
-              </div> -->
-            </div>
-          {:else}
-            <div></div>
-            <!-- Loading... -->
-          {/if}
-        {:else}
-          <button
-            class="h-10 w-10 px2 relative z-20 flexcc text-black/60 bg-white rounded-full hover:text-cyan-500"
-            onclick={(ev) => S.ev.click(ev, ["pick-asset", uuid])}
-          >
-            <CirclePlusIcon />
-          </button>
-        {/if}
-        <button
-          class="h-10 w-10 px2 flexcc text-black/60 bg-white cursor-move rounded-full"
-          onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", uuid])}
-        >
-          <MoveIcon class="size-full" />
-        </button>
-        <button
-          class="h-10 w-10 px2 flexcc text-black/60 bg-white hover:text-cyan-500 rounded-full"
-          aria-label="Copy link to iframe"
-          onmousedown={(ev) => S.ev.mousedown(ev, ["copy-link", uuid])}
-        >
-          <LinkIcon class="size-full" />
-        </button>
+        <FrameMenu {uuid} {frame} />
       </div>
     </div>
   {/if}

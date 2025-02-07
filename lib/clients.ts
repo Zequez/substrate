@@ -4,11 +4,15 @@ import {
   initializeHotReload,
   AppletServices,
   type WAL,
-  type RenderInfo,
 } from "@theweave/api";
 import { SimpleHolochain } from "generic-dna/lib/src";
-import { type AppClient } from "@holochain/client";
-import type { ProfilesClient } from "@holochain-open-dev/profiles/dist/profiles-client.d.ts";
+import {
+  AdminWebsocket,
+  AppWebsocket,
+  type AppClient,
+  type AppWebsocketConnectionOptions,
+} from "@holochain/client";
+import { ProfilesClient } from "@holochain-open-dev/profiles/dist/profiles-client.js";
 import {
   encodeHashToBase64,
   type HoloHash,
@@ -17,7 +21,7 @@ import {
 } from "@holochain/client";
 
 type Context = {
-  weave: WeaveClient;
+  weave: WeaveClient | null;
   gdna: SimpleHolochain;
   app: AppClient;
   profiles: ProfilesClient;
@@ -39,50 +43,83 @@ async function connect(appletServices: AppletServices): Promise<void> {
     }
   }
 
-  const weaveClient = isWeaveContext()
-    ? await WeaveClient.connect(appletServices)
-    : undefined;
-
-  if (!weaveClient) throw "Not running in Weave";
-
-  if (weaveClient.renderInfo.type !== "applet-view") {
-    throw "Not running in Weave applet view";
-  }
-
-  weaveClient.renderInfo.view.type;
-
+  let appClient: AppClient;
+  let profilesClient: ProfilesClient;
+  let weaveClient: WeaveClient | null = null;
   let wal: WAL | null = null;
-  if (weaveClient.renderInfo.view.type === "asset") {
-    console.log(
-      "Rendering Substrate as asset",
-      weaveClient.renderInfo.view.wal.hrl
-    );
-    console.log("CONTEXT:", weaveClient.renderInfo.view.wal.context);
+  if (isWeaveContext()) {
+    weaveClient = await WeaveClient.connect(appletServices);
 
-    wal = weaveClient.renderInfo.view.wal;
-  } else if (weaveClient.renderInfo.view.type !== "main") {
-    throw "Only works as asset or main thread";
+    if (weaveClient.renderInfo.type !== "applet-view") {
+      throw "Not running in Weave applet view";
+    }
+
+    if (weaveClient.renderInfo.view.type === "asset") {
+      console.log(
+        "Rendering Substrate as asset",
+        weaveClient.renderInfo.view.wal.hrl
+      );
+      console.log("CONTEXT:", weaveClient.renderInfo.view.wal.context);
+
+      wal = weaveClient.renderInfo.view.wal;
+    } else if (weaveClient.renderInfo.view.type !== "main") {
+      throw "Only works as asset or main thread";
+    }
+
+    appClient = weaveClient.renderInfo.appletClient;
+    profilesClient = weaveClient.renderInfo.profilesClient;
+  } else {
+    console.log("APP PORT", import.meta.env.APP_PORT);
+    console.log("ADMIN PORT", import.meta.env.ADMIN_PORT);
+    const adminWebsocket = await AdminWebsocket.connect({
+      url: new URL(`ws://localhost:${import.meta.env.ADMIN_PORT}`),
+    });
+    let tokenResp: any = {};
+    try {
+      console.log("HAPP", import.meta.env.HAPP);
+      tokenResp = await adminWebsocket.issueAppAuthenticationToken({
+        installed_app_id: import.meta.env.HAPP,
+      });
+    } catch (e) {
+      console.log("ERROR CONNECTING TO APP WEBSOCKET", e);
+      throw e;
+    }
+
+    const x = await adminWebsocket.listApps({});
+    console.log("Apps", x);
+    const cellIds = await adminWebsocket.listCellIds();
+    console.log("CELL IDS", cellIds);
+    await adminWebsocket.authorizeSigningCredentials(cellIds[0]);
+
+    console.log(
+      "appPort and Id is",
+      import.meta.env.APP_PORT,
+      import.meta.env.HAPP
+    );
+
+    appClient = await AppWebsocket.connect({
+      url: new URL(`ws://localhost:${import.meta.env.APP_PORT}`),
+      token: tokenResp.token,
+    });
+
+    profilesClient = new ProfilesClient(appClient, import.meta.env.HAPP);
   }
 
-  const genericZomeClient = await SimpleHolochain.connect(
-    weaveClient.renderInfo.appletClient,
-    {
-      role_name: "substrate",
-      zome_name: "generic_zome",
-    }
-  );
-
-  const appClient = weaveClient.renderInfo.appletClient;
-  const profilesClient = weaveClient.renderInfo.profilesClient;
+  const genericZomeClient = await SimpleHolochain.connect(appClient, {
+    role_name: import.meta.env.HAPP,
+    zome_name: "generic_zome",
+  });
 
   const appInfo = await appClient.appInfo();
   if (!appInfo) {
     console.log("App info was null?");
     throw "App info was null for some reason";
   }
-  const dnaHash = (appInfo.cell_info["substrate"][0] as any)[
+  const dnaHash = (appInfo.cell_info[import.meta.env.HAPP][0] as any)[
     CellType.Provisioned
   ].cell_id[0];
+
+  console.log("FINISHED SETTING UP CLIENTS");
 
   context = {
     weave: weaveClient,

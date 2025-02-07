@@ -17,23 +17,25 @@ type ProfileStatus = "unknown" | "none" | Profile;
 
 function mountInit() {
   onMount(() => {
-    return clients.weave.onPeerStatusUpdate((peersStatus) => {
-      console.log("Gotten peers status", peersStatus);
-      peers = peersStatus;
-      Object.entries(peers).forEach(async ([agentString, status]) => {
-        if (!participantsProfiles[agentString]) {
-          participantsProfiles[agentString] = "unknown";
-          const profile = await clients.profiles.getAgentProfile(
-            decodeHashFromBase64(agentString)
-          );
-          if (profile) {
-            participantsProfiles[agentString] = profile.entry;
-          } else {
-            participantsProfiles[agentString] = "none";
+    if (clients.weave) {
+      return clients.weave.onPeerStatusUpdate((peersStatus) => {
+        console.log("Gotten peers status", peersStatus);
+        peers = peersStatus;
+        Object.entries(peers).forEach(async ([agentString, status]) => {
+          if (!participantsProfiles[agentString]) {
+            participantsProfiles[agentString] = "unknown";
+            const profile = await clients.profiles.getAgentProfile(
+              decodeHashFromBase64(agentString)
+            );
+            if (profile) {
+              participantsProfiles[agentString] = profile.entry;
+            } else {
+              participantsProfiles[agentString] = "none";
+            }
           }
-        }
+        });
       });
-    });
+    }
   });
 }
 

@@ -4,3 +4,4 @@ node_modules
 unocss.config.ts
 .env
 .DS_Store
+.hc*

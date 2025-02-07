@@ -210,6 +210,12 @@ function uiStore(config: { centerAt: Box | null }) {
     panZoomToFit,
     transform,
     boxStyle,
+    get width() {
+      return width;
+    },
+    get height() {
+      return height;
+    },
     grid: {
       get el() {
         return gridEl;
@@ -274,6 +280,12 @@ function uiStore(config: { centerAt: Box | null }) {
       },
       get gridY() {
         return mouseGridY;
+      },
+      get clientX() {
+        return mouseX;
+      },
+      get clientY() {
+        return mouseY;
       },
       get box() {
         return mouseBox;
