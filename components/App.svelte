@@ -186,14 +186,14 @@
         {@const moving =
           S.currentAction.type === "moveFrame" && S.currentAction.uuid === uuid}
         {@const boxStyle = S.ui.boxStyle(box)}
-        {@const transformOriginStyle =
-          S.currentAction.type === "moveFrame"
-            ? `transform-origin: ${S.currentAction.pickX * 100}% ${S.currentAction.pickY * 100}%`
-            : ""}
+        {@const transformOriginStyle = moving
+          ? `transform-origin: ${S.currentAction.pickX * 100}% ${S.currentAction.pickY * 100}%`
+          : ""}
         {@const trashing =
           S.currentAction.type === "moveFrame" &&
           S.currentAction.uuid === uuid &&
           S.currentAction.trashing}
+        {@const borderRadius = (1 / S.pos.z) * (S.pos.z > 0.2 ? 6 : 4)}
 
         <!-- Shadow only element z-30 => So shadows don't overlap over other frames -->
         <div
@@ -216,7 +216,7 @@
                   moving && !trashing,
               },
             ]}
-            style={`border-radius: ${(1 / S.pos.z) * 6}px`}
+            style={`border-radius: ${borderRadius}px`}
           ></div>
         </div>
 
@@ -231,7 +231,7 @@
           style={boxStyle}
         >
           <div
-            style={`border-radius: ${(1 / S.pos.z) * 6}px`}
+            style={`border-radius: ${borderRadius}px`}
             use:stickyStyle={transformOriginStyle}
             use:c={[
               "size-full",

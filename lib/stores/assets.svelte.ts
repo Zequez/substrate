@@ -37,6 +37,7 @@ async function loadAsset(key: string) {
 }
 
 async function pickAsset() {
+  if (!clients.weave) return;
   const wal = await clients.weave.assets.userSelectAsset();
   if (wal) {
     const url = stringifyWal(wal);
@@ -47,6 +48,7 @@ async function pickAsset() {
 }
 
 async function cacheAsset(key: string, wal: WAL) {
+  if (!clients.weave) return;
   if (loaded.indexOf(key) !== -1) {
     return assetsMap[key] || null;
   }
