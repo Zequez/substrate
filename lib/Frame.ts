@@ -93,8 +93,8 @@ export function rollDownFrame(frame: BoxedFrame): BoxedFrame {
   };
 }
 
-export function containingBox(boxes: Box[]): Box {
-  if (boxes.length === 0) throw "No boxes to contain";
+export function containingBox(boxes: Box[]): Box | null {
+  if (boxes.length === 0) return null;
 
   let tl: number;
   let tr: number;

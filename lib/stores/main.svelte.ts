@@ -67,7 +67,9 @@ async function createStore() {
     ui.mountInit();
 
     $effect(() => {
-      ui.setMinZoomToFitBox(fitAllBox);
+      if (fitAllBox) {
+        ui.setMinZoomToFitBox(fitAllBox);
+      }
     });
 
     appEl.addEventListener("fullscreenchange", (ev) => {
@@ -229,7 +231,9 @@ async function createStore() {
           break;
         }
         case "fit-all": {
-          ui.panZoomToFit(fitAllBox);
+          if (fitAllBox) {
+            ui.panZoomToFit(fitAllBox);
+          }
           break;
         }
         case "toggle-fullscreen": {
