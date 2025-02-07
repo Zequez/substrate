@@ -122,7 +122,7 @@ function uiStore(config: { centerAt: Box | null }) {
           zoom,
           panX,
           panY,
-          color: "#fff3",
+          color: "#fff",
           size: gridSize,
         });
       }
