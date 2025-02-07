@@ -199,7 +199,8 @@
         <div
           class={cx("absolute top-0 left-0", {
             "z-30": !moving,
-            "transition-transform": !moving && !resizing,
+            "duration-150 transition-property-[transform,width,height]":
+              !moving && !resizing,
             "z-50 transition-none": moving,
           })}
           style={boxStyle}
@@ -222,12 +223,16 @@
 
         <!-- Solid frame element z-40 -->
         <div
-          class={cx("absolute top-0 left-0", {
-            "z-40": !moving,
-            "transition-transform": !moving && !resizing,
-            "z-60 transition-none": moving,
-            "z-80": S.lastInteractionUuid === uuid,
-          })}
+          use:c={[
+            "absolute top-0 left-0",
+            {
+              "z-40": !moving,
+              "duration-150 transition-property-[transform,width,height]":
+                !moving && !resizing,
+              "z-60": moving,
+              "z-80": S.lastInteractionUuid === uuid,
+            },
+          ]}
           style={boxStyle}
         >
           <div
