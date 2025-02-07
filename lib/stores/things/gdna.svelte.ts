@@ -42,7 +42,7 @@ type NetworkAction = {
 //   type: 'discovered'
 // }
 
-function things<T extends Wrapper>(anchorNodeId: string) {
+function things<T extends Wrapper>(anchorNodeId: string, thingType: string) {
   let fetchedTimestamp = $state<number>(0);
   let networkActions = LS.state<NetworkAction[]>(
     `GDNA_NETWORK_ACTIONS_${anchorNodeId}`,
@@ -90,6 +90,35 @@ function things<T extends Wrapper>(anchorNodeId: string) {
 
   const ANCHOR_NODE = { type: "Anchor" as "Anchor", id: anchorNodeId };
 
+  let signalThings: ParsedThing<T>;
+  clients.gdna.zomeClient.onSignal(async (s) => {
+    console.log("Got signal from GDNA zome client", s);
+    if (s.type === "Remote") {
+      if (s.content.type === "ThingCreated") {
+        processRemoteThing(s.content.thing);
+      } else if (s.content.type === "ThingUpdated") {
+        processRemoteThing(s.content.thing);
+      }
+    }
+  });
+
+  function processRemoteThing(thing: Thing) {
+    try {
+      const content = JSON.parse(thing.content) as T;
+      if (content.type === thingType) {
+        const stored = things[content.uuid];
+        if (!stored || stored.content.timestamp < content.timestamp) {
+          console.log(`Thing from network ${content.uuid}`);
+          const parsedThing = thingToParsed(thing, content);
+          things[content.uuid] = parsedThing;
+          // onThingDiscovered(parsedThing);
+        }
+      }
+    } catch (e) {
+      console.error("Thing badly formatted", thing);
+    }
+  }
+
   const unsub = clients.gdna.subscribeToNode(ANCHOR_NODE, async (status) => {
     // console.log(`ANCHOR NODE ${anchorNodeId}`, status);
     if (status.status === "complete") {
@@ -110,18 +139,7 @@ function things<T extends Wrapper>(anchorNodeId: string) {
       // console.log(`Network Things ${anchorNodeId}`, allThings);
       allThingsWithOriginalId.forEach((thing) => {
         if (thing) {
-          try {
-            const content = JSON.parse(thing.content) as T;
-            const stored = things[content.uuid];
-            if (!stored || stored.content.timestamp < content.timestamp) {
-              console.log(`Thing from network ${content.uuid}`);
-              const parsedThing = thingToParsed(thing, content);
-              things[content.uuid] = parsedThing;
-              // onThingDiscovered(parsedThing);
-            }
-          } catch (e) {
-            console.error("Thing badly formatted", thing);
-          }
+          processRemoteThing(thing);
         }
       });
 

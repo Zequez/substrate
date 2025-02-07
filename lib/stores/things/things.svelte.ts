@@ -42,7 +42,7 @@ function typeOfThing<const T extends string, K>(
   type $ThingWrapped = ThingWrapped<T, K>;
 
   let lsFrames = LS.state<$ThingWrapped>(storageKey);
-  let gdnaFrames = GDNA.things<$ThingWrapped>(storageKey);
+  let gdnaFrames = GDNA.things<$ThingWrapped>(storageKey, thingType);
 
   // let synFrames = SYN.document<BoxedFrameWrapper>("boxedFrames");
 
