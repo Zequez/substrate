@@ -1,9 +1,13 @@
 import { defineConfig } from "wdc";
 
 export default defineConfig({
-  version: "0.1.2",
+  version: "0.1.3",
   id: "substrate",
   changeLog: `
+# 0.1.3
+  - Instant syncing with Generic DNA
+  - You can now paint the canvas grid blocks with colors
+  - When running in fullscreen you can pan the canvas by moving the mouse to the edge of the screen (not functional instide Weave yet until fullscreen permissions are enabled for applets)
 # 0.1.2
   - Extracted most canvas UI-related states out of the main store
   - Added max zoom out button that zooms out and pans so that all frames are visible simuntaneously
