@@ -44,8 +44,6 @@
         bufferPainted = [];
       }
       const pixelSize = gridSize * gc.z;
-      ctx.fillStyle = "red";
-      ctx.fillRect(gc.x * pixelSize, gc.y * pixelSize, 10, 10);
       pxls.forEach(([x, y, color]) => {
         const palletteColor = PALLETTE[color];
         const func = palletteColor ? "fillRect" : "clearRect";

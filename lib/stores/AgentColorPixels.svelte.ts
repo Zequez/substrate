@@ -3,16 +3,21 @@ import thingsStore from "./things";
 
 export const PALLETTE = [
   null,
-  "#ffffff",
-  "#000000",
-  "#FF0000",
-  "#00FF00",
-  "#0000FF",
-  "#FFFF00",
-  "#FF00FF",
-  "#00FFFF",
-  "#FFA500",
-  "#800080",
+  "#111111",
+  "hsl(90, 70%, 50%)",
+  "hsl(120, 70%, 50%)",
+  "hsl(150, 70%, 50%)",
+  "hsl(180, 70%, 50%)",
+  "hsl(210, 70%, 50%)",
+  "hsl(240, 70%, 50%)",
+  "hsl(270, 70%, 50%)",
+  "hsl(300, 70%, 50%)",
+  "hsl(330, 70%, 50%)",
+  "hsl(340, 70%, 50%)",
+  "hsl(0, 70%, 50%)",
+  "hsl(30, 70%, 50%)",
+  "hsl(60, 90%, 50%)",
+  "#fafafa",
 ];
 
 // x, y, color
@@ -42,20 +47,6 @@ function createStore() {
 
   let buffer = $state<PixelsMapTimestamped>({});
   let bufferFlat = $derived(toFlat(buffer));
-
-  // const mineResolved = $derived<PixelsMapTimestamped>({
-  //   ...(pixels.mine?.value || {}),
-  //   ...buffer,
-  // });
-
-  // const allResolved = $derived.by<{ [key: string]: PixelsMapTimestamped }>(() => {
-  //   const resolved: { [key: string]: PixelsMapTimestamped } = {};
-  //   Object.values(pixels.all).forEach((p) => {
-  //     resolved[p.uuid] = p.value;
-  //   });
-  //   // resolved[clients.agentKeyB64] = mineResolved;
-  //   return resolved;
-  // });
 
   const pixelsFlat = $derived.by<PixelsFlat[]>(() => {
     const latest = Object.values(pixels.all).reduce(
