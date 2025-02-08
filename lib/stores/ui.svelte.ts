@@ -1,5 +1,5 @@
 import { onMount } from "svelte";
-import type { Box } from "../../lib/Frame";
+import type { Box } from "../Frame";
 import { renderGrid } from "../../lib/grid";
 import { maybeReadLS } from "../../lib/utils";
 

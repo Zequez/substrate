@@ -8,9 +8,12 @@
   import SS from "../lib/stores/main.svelte";
   import profiles from "../lib/stores/profiles.svelte";
   import { type BoxedFrame, type Box, isTouching } from "../lib/Frame";
+  import { PALLETTE } from "../lib/stores/AgentColorPixels.svelte";
   import FrameContent from "./FrameContent.svelte";
   import FrameInteracting from "./FrameInteracting.svelte";
   import GhostBox from "./GhostBox.svelte";
+  import PixelCanvas from "./PixelCanvas.svelte";
+  import ColorPicker from "./ColorPicker.svelte";
   import { c, stickyStyle } from "../lib/utils";
   // import Coral from "./Coral.svelte";
   // import GenericDnaSandbox from "./GenericDnaSandbox.svelte";
@@ -23,6 +26,7 @@
       S.currentAction.type === "none" ||
       S.currentAction.type === "pan" ||
       S.currentAction.type === "createFrame" ||
+      S.currentAction.type === "painting" ||
       S.currentAction.uuid !== uuid
     ) {
       return [frame.box, null];
@@ -62,6 +66,18 @@
 
 <!-- <GenericDnaInspector /> -->
 <!-- <GenericDnaSandbox H={genericZomeClient} /> -->
+
+<!-- PIXELS -->
+
+<PixelCanvas
+  pixels={S.pixels}
+  buffer={S.pixelsBuffer}
+  pos={S.pos}
+  gridSize={S.grid.size}
+/>
+
+<!-- COLOR PICKER -->
+<ColorPicker />
 
 <!-- PROFILES -->
 
@@ -146,6 +162,8 @@
   onmouseup={S.ev.mouseup}
   onmousemove={S.ev.mousemove}
   onwheel={S.ev.wheel}
+  onmousedown={(ev) => S.ev.mousedown(ev, ["paint-start"])}
+  oncontextmenu={(ev) => ev.preventDefault()}
   role="presentation"
   class={cx("absolute inset-0 overflow-hidden", {
     "cursor-grabbing": S.currentActionIs("pan", "moveFrame"),

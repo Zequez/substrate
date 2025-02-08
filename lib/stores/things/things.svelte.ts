@@ -3,10 +3,8 @@ import {
   encodeHashToBase64,
   decodeHashFromBase64,
   type HoloHash,
-  type AppClient,
 } from "@holochain/client";
 import { WeaveClient, weaveUrlFromWal, type WAL } from "@theweave/api";
-import { type BoxedFrame } from "../../Frame";
 import LS from "./local.svelte";
 import GDNA from "./gdna.svelte";
 import clients from "../../clients";
@@ -37,19 +35,20 @@ type StorageSystem<T> = {
 
 function typeOfThing<const T extends string, K>(
   thingType: T,
-  storageKey: string
+  storageKey: string,
+  onePerAgent: boolean = false
 ) {
   type $ThingWrapped = ThingWrapped<T, K>;
 
-  let lsFrames = LS.state<$ThingWrapped>(storageKey);
-  let gdnaFrames = GDNA.things<$ThingWrapped>(storageKey, thingType);
+  let lsThings = LS.state<$ThingWrapped>(storageKey);
+  let gdnaThings = GDNA.things<$ThingWrapped>(storageKey, thingType);
 
   // let synFrames = SYN.document<BoxedFrameWrapper>("boxedFrames");
 
-  const stores: StorageSystem<$ThingWrapped>[] = [lsFrames, gdnaFrames];
+  const stores: StorageSystem<$ThingWrapped>[] = [lsThings, gdnaThings];
   const S = stores[0];
 
-  let resolvedFrames: {
+  let resolvedThings: {
     [key: string]: {
       resolution: [boolean, boolean];
       value: $ThingWrapped;
@@ -114,11 +113,11 @@ function typeOfThing<const T extends string, K>(
     return resolved;
   });
 
-  const outputFrames = $derived.by<{ [key: string]: $ThingWrapped }>(() => {
+  const outputThings = $derived.by<{ [key: string]: $ThingWrapped }>(() => {
     const output: { [key: string]: $ThingWrapped } = {};
-    for (let uuid in resolvedFrames) {
-      if (!resolvedFrames[uuid].value.deleted) {
-        output[uuid] = resolvedFrames[uuid].value;
+    for (let uuid in resolvedThings) {
+      if (!resolvedThings[uuid].value.deleted) {
+        output[uuid] = resolvedThings[uuid].value;
       }
     }
     return output;
@@ -126,56 +125,67 @@ function typeOfThing<const T extends string, K>(
 
   $effect.root(() => {
     $effect(() => {
-      [resolvedFrames];
+      [resolvedThings];
       doResolutionActions();
     });
   });
 
   function doResolutionActions() {
     // console.log("RESOLVING", resolvedFrames);
-    for (let uuid in resolvedFrames) {
-      const { resolution, value: frame } = resolvedFrames[uuid];
+    for (let uuid in resolvedThings) {
+      const { resolution, value } = resolvedThings[uuid];
       resolution.forEach((val, i) => {
         if (!val) {
           if (stores[i].ready) {
-            stores[i].set(frame.uuid, frame);
+            stores[i].set(value.uuid, value);
           }
         }
       });
     }
   }
 
-  async function create(boxedFrame: K) {
-    const uuid = crypto.randomUUID();
-    const boxedFrameWrapper: $ThingWrapped = {
+  const mine = $derived(
+    onePerAgent
+      ? Object.values(outputThings).find((v) => v.uuid === clients.agentKeyB64)
+      : null
+  );
+
+  async function create(thingValue: K) {
+    console.log(`CReating ${thingType}`, thingValue);
+    const uuid = onePerAgent ? clients.agentKeyB64 : crypto.randomUUID();
+    const thingWrapper: $ThingWrapped = {
       uuid,
       type: thingType,
       timestamp: new Date().getTime(),
       createdBy: clients.agentKeyB64,
       updatedBy: null,
-      value: boxedFrame,
+      value: thingValue,
       deleted: false,
     };
-    S.set(uuid, boxedFrameWrapper);
+    S.set(uuid, thingWrapper);
   }
 
-  async function update(uuid: string, boxedFrame: Partial<BoxedFrame>) {
-    console.log("Updating frame", uuid, boxedFrame);
-    const storedFrame = S.all[uuid];
-    if (!storedFrame) throw "Boxed frame not found";
-    S.set(uuid, {
-      ...storedFrame,
-      value: { ...storedFrame.value, ...boxedFrame },
+  async function update(uuid: string | null, thingValue: Partial<K>) {
+    console.log(`Updating ${thingType}`, uuid, thingValue);
+    if (!onePerAgent && !uuid) throw "Must use UUID";
+    const resolvedUuid = onePerAgent ? clients.agentKeyB64 : uuid!;
+    const storedThing = S.all[resolvedUuid];
+    if (!storedThing) throw `${thingType} not found`;
+    S.set(resolvedUuid, {
+      ...storedThing,
+      value: { ...storedThing.value, ...thingValue },
       timestamp: new Date().getTime(),
       updatedBy: clients.agentKeyB64,
     });
   }
 
-  async function remove(uuid: string) {
-    console.log("Removing frame", uuid);
-    const storedFrame = S.all[uuid];
+  async function remove(uuid: string | null) {
+    console.log(`Removing ${thingType}`, uuid);
+    if (!onePerAgent && !uuid) throw "Must use UUID";
+    const resolvedUuid = onePerAgent ? clients.agentKeyB64 : uuid!;
+    const storedFrame = S.all[resolvedUuid];
     if (!storedFrame) throw "Boxed frame not found";
-    S.set(uuid, {
+    S.set(resolvedUuid, {
       ...storedFrame,
       timestamp: new Date().getTime(),
       updatedBy: clients.agentKeyB64,
@@ -185,13 +195,16 @@ function typeOfThing<const T extends string, K>(
 
   return {
     get all() {
-      return outputFrames;
+      return outputThings;
+    },
+    get mine() {
+      return mine;
     },
     create,
     update,
     remove,
     link: (uuid: string): [WAL, string] | [] => {
-      const entryHash = gdnaFrames.getHash(uuid);
+      const entryHash = gdnaThings.getHash(uuid);
       if (!entryHash) {
         return [];
       }
@@ -202,7 +215,7 @@ function typeOfThing<const T extends string, K>(
       return [wal, weaveUrlFromWal(wal)];
     },
     findByHash: (hash: HoloHash) => {
-      return gdnaFrames.findByHash(hash);
+      return gdnaThings.findByHash(hash);
     },
   };
 }

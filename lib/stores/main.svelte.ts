@@ -13,6 +13,11 @@ import assets from "./assets.svelte";
 import profiles from "./profiles.svelte";
 import clients from "../clients";
 import uiStore from "./ui.svelte";
+import agentColorPixels, {
+  PALLETTE,
+  type PixelsFlat,
+} from "./AgentColorPixels.svelte";
+import { bresenhamLine } from "../../lib/utils";
 
 export type BoxResizeHandles =
   | "l"
@@ -27,16 +32,22 @@ export type BoxResizeHandles =
 async function createStore() {
   const appEl = document.getElementById("app")!;
 
-  type FramesStore = ReturnType<
-    typeof thingsStore.typeOfThing<"BoxedFrame", BoxedFrame>
-  >;
-
-  let frames = $state<FramesStore>(
+  let frames = $state(
     thingsStore.typeOfThing<"BoxedFrame", BoxedFrame>(
       "BoxedFrame",
       "BOXED_FRAME"
     )
   );
+
+  let colorPixels = agentColorPixels.createStore();
+  let currentColor = $state(1);
+
+  const colorPixelsInViewport: PixelsFlat[] = $derived.by(() => {
+    return colorPixels.pixels.filter(([x, y]) => {
+      const vp = ui.pos.viewport;
+      return x >= vp.x && x <= vp.x + vp.w && y >= vp.y && y <= vp.y + vp.h;
+    });
+  });
 
   const frameHash = clients.wal ? clients.wal.hrl[1] : null;
   const frame = frameHash ? frames.findByHash(frameHash) : null;
@@ -152,6 +163,11 @@ async function createStore() {
         newBox: Box;
         lastValidBox: Box;
         isValid: boolean;
+      }
+    | {
+        type: "painting";
+        lastX: number;
+        lastY: number;
       };
 
   let mouseDown = $state<MouseDownActions>({ type: "none" });
@@ -165,6 +181,7 @@ async function createStore() {
       | ["remove-asset", string]
       | ["fit-all"]
       | ["toggle-fullscreen"]
+      | ["paint-start"]
   ) {
     // console.log("Mouse down", target);
     if (target) {
@@ -243,6 +260,17 @@ async function createStore() {
             appEl.requestFullscreen();
           }
           break;
+        }
+        case "paint-start": {
+          if (ev.button === 2) {
+            const [x, y] = ui.mouseToGridPos(ev.clientX, ev.clientY);
+            mouseDown = {
+              type: "painting",
+              lastX: x,
+              lastY: y,
+            };
+            colorPixels.paint(x, y, currentColor);
+          }
         }
       }
     } else {
@@ -327,6 +355,17 @@ async function createStore() {
         if (mouseDown.isValid) {
           mouseDown.lastValidBox = newBox;
         }
+        break;
+      }
+      case "painting": {
+        const [x, y] = ui.mouseToGridPos(ev.clientX, ev.clientY);
+        const points = bresenhamLine(mouseDown.lastX, mouseDown.lastY, x, y);
+        points.forEach(([x, y]) => {
+          colorPixels.paint(x, y, currentColor);
+        });
+
+        mouseDown.lastX = x;
+        mouseDown.lastY = y;
       }
     }
   }
@@ -370,6 +409,10 @@ async function createStore() {
         });
         break;
       }
+      case "painting": {
+        colorPixels.commit();
+        break;
+      }
       default: {
         console.log("Nothing to do on mouse up for", mouseDown.type);
       }
@@ -389,7 +432,10 @@ async function createStore() {
   // CLICK
   /************************************** */
 
-  async function handleClick(ev: MouseEvent, target?: ["pick-asset", string]) {
+  async function handleClick(
+    ev: MouseEvent,
+    target?: ["pick-asset", string] | ["set-pallette", number]
+  ) {
     if (target) {
       if (target[0] === "pick-asset") {
         const assetData = await assets.pickAsset();
@@ -398,6 +444,8 @@ async function createStore() {
             assetUrl: assetData.key,
           });
         }
+      } else if (target[0] === "set-pallette") {
+        currentColor = target[1];
       }
     }
   }
@@ -467,6 +515,15 @@ async function createStore() {
       return isInFullscreen;
     },
     frameIsInViewport,
+    get pixels() {
+      return colorPixelsInViewport;
+    },
+    get pixelsBuffer() {
+      return colorPixels.buffer;
+    },
+    get currentColor() {
+      return currentColor;
+    },
   };
 }
 
