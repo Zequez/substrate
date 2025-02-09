@@ -65,6 +65,17 @@ async function createStore() {
   let isInFullscreen = $state<boolean>(!!document.fullscreenElement);
 
   const ui = uiStore({ centerAt: frame ? frame.value.box : null });
+  const keyboardMove = $state<{
+    up: boolean;
+    down: boolean;
+    left: boolean;
+    right: boolean;
+  }>({
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+  });
 
   // ██╗███╗   ██╗██╗████████╗
   // ██║████╗  ██║██║╚══██╔══╝
@@ -85,6 +96,47 @@ async function createStore() {
 
     appEl.addEventListener("fullscreenchange", (ev) => {
       isInFullscreen = !!document.fullscreenElement;
+    });
+
+    let keyboardMoveTimeout: any = null;
+    function handleKeyboardMove() {
+      let x = 0;
+      let y = 0;
+      if (keyboardMove.up) y += 1;
+      if (keyboardMove.down) y -= 1;
+      if (keyboardMove.left) x += 1;
+      if (keyboardMove.right) x -= 1;
+      if (x || y) {
+        ui.mouse.pan(x * ui.grid.size * 1.5, y * ui.grid.size * 1.5);
+        keyboardMoveTimeout = setTimeout(handleKeyboardMove, 25);
+      } else {
+        keyboardMoveTimeout = null;
+      }
+    }
+
+    window.addEventListener("keydown", (ev) => {
+      if (ev.code === "KeyS") {
+        keyboardMove.down = true;
+      } else if (ev.code === "KeyW") {
+        keyboardMove.up = true;
+      } else if (ev.code === "KeyA") {
+        keyboardMove.left = true;
+      } else if (ev.code === "KeyD") {
+        keyboardMove.right = true;
+      }
+      if (!keyboardMoveTimeout) handleKeyboardMove();
+    });
+
+    window.addEventListener("keyup", (ev) => {
+      if (ev.code === "KeyS") {
+        keyboardMove.down = false;
+      } else if (ev.code === "KeyW") {
+        keyboardMove.up = false;
+      } else if (ev.code === "KeyA") {
+        keyboardMove.left = false;
+      } else if (ev.code === "KeyD") {
+        keyboardMove.right = false;
+      }
     });
 
     let timeoutId: any = null;

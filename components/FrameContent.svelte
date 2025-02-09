@@ -45,7 +45,7 @@
     {#if S.pos.z <= 0.5}
       <div
         style={`padding: ${frameIconPadding}px`}
-        class="absolute top-0 z-30 left-0 h-full flexcc opacity-75"
+        class="absolute top-0 z-30 left-0 h-full size-full flexcc opacity-75"
       >
         <img
           src={asset.info.icon_src}
