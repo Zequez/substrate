@@ -49,7 +49,7 @@
 {/if}
 <button
   class="h-10 w-10 px2 flexcc text-black/60 bg-white cursor-move rounded-full"
-  onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", uuid])}
+  onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", [uuid]])}
 >
   <MoveIcon class="size-full" />
 </button>

@@ -65,7 +65,7 @@ async function createStore() {
   let isInFullscreen = $state<boolean>(!!document.fullscreenElement);
 
   const ui = uiStore({ centerAt: frame ? frame.value.box : null });
-  const keyboardMove = $state<{
+  let keyboardMove = $state<{
     up: boolean;
     down: boolean;
     left: boolean;
@@ -76,6 +76,7 @@ async function createStore() {
     left: false,
     right: false,
   });
+  let framesSelected = $state<string[]>([]);
 
   // ██╗███╗   ██╗██╗████████╗
   // ██║████╗  ██║██║╚══██╔══╝
@@ -193,10 +194,16 @@ async function createStore() {
   type MouseDownActions =
     | { type: "none" }
     | { type: "pan" }
-    | { type: "createFrame"; box: Box; boxNormalized: Box; isValid: boolean }
+    | {
+        type: "createFrame";
+        box: Box;
+        boxNormalized: Box;
+        isValid: boolean;
+        touchingFrames: string[];
+      }
     | {
         type: "moveFrame";
-        uuid: string;
+        uuids: string[];
         startX: number;
         startY: number;
         boxDelta: { x: number; y: number };
@@ -227,7 +234,7 @@ async function createStore() {
   function handleMouseDown(
     ev: MouseEvent,
     target?:
-      | ["frame-picker", string]
+      | ["frame-picker", string[]]
       | ["frame-resize", BoxResizeHandles, string]
       | ["copy-link", string]
       | ["remove-asset", string]
@@ -258,13 +265,12 @@ async function createStore() {
           const [startX, startY] = ui.mouseToGridPos(ev.clientX, ev.clientY);
           const t = (ev.currentTarget as HTMLDivElement).parentElement!;
           const { left, top, width, height } = t.getBoundingClientRect();
-          console.log("AAAA", left, top, width, height);
           const pickX = (ev.clientX - left) / width;
           const pickY = (ev.clientY - top) / height;
 
           mouseDown = {
             type: "moveFrame",
-            uuid: target[1],
+            uuids: target[1],
             startX,
             startY,
             pickX,
@@ -334,6 +340,7 @@ async function createStore() {
           box: ui.mouse.box,
           boxNormalized: ui.mouse.box,
           isValid: boxIsValid(ui.mouse.box),
+          touchingFrames: [],
         };
       }
     }
@@ -368,23 +375,37 @@ async function createStore() {
         };
         mouseDown.boxNormalized = normalizeBox(mouseDown.box);
         mouseDown.isValid = boxIsValid(mouseDown.boxNormalized);
+
+        const framesTouching = touchingFrames(mouseDown.boxNormalized).map(
+          (f) => f.uuid
+        );
+        mouseDown.touchingFrames = framesTouching;
         break;
       }
       case "moveFrame": {
-        const frame = frames.all[mouseDown.uuid].value;
         const newBoxDelta = {
           x: ui.mouse.gridX - mouseDown.startX,
           y: ui.mouse.gridY - mouseDown.startY,
         };
         mouseDown.boxDelta = newBoxDelta;
 
-        const newBox = {
-          ...frame.box,
-          x: frame.box.x + newBoxDelta.x,
-          y: frame.box.y + newBoxDelta.y,
-        };
+        let isValid = true;
+        for (let uuid of mouseDown.uuids) {
+          const frame = frames.all[uuid].value;
 
-        mouseDown.isValid = boxIsValid(newBox, mouseDown.uuid);
+          const newBox = {
+            ...frame.box,
+            x: frame.box.x + newBoxDelta.x,
+            y: frame.box.y + newBoxDelta.y,
+          };
+
+          isValid = boxIsValid(newBox, mouseDown.uuids);
+          if (!isValid) {
+            break;
+          }
+        }
+
+        mouseDown.isValid = isValid;
 
         if (mouseDown.isValid) {
           mouseDown.lastValidBoxDelta = newBoxDelta;
@@ -395,6 +416,7 @@ async function createStore() {
         } else {
           mouseDown.trashing = false;
         }
+
         break;
       }
       case "resizeFrame": {
@@ -402,7 +424,7 @@ async function createStore() {
         let deltaX = ui.mouse.gridX - mouseDown.startX;
         let deltaY = ui.mouse.gridY - mouseDown.startY;
         const newBox = resizeBox(mouseDown.pos, frame.box, deltaX, deltaY);
-        mouseDown.isValid = boxIsValid(newBox, mouseDown.uuid);
+        mouseDown.isValid = boxIsValid(newBox, [mouseDown.uuid]);
         mouseDown.newBox = newBox;
         if (mouseDown.isValid) {
           mouseDown.lastValidBox = newBox;
@@ -435,24 +457,28 @@ async function createStore() {
             assetUrl: "",
             split: null,
           };
-          console.log("NEW FRAME!", newFrame.box);
           frames.create(newFrame);
+        } else {
+          framesSelected = mouseDown.touchingFrames;
         }
         break;
       }
       case "moveFrame": {
-        if (mouseDown.trashing) {
-          frames.remove(mouseDown.uuid);
-        } else {
-          const frame = frames.all[mouseDown.uuid].value;
-          frames.update(mouseDown.uuid, {
-            box: {
-              ...frame.box,
-              x: frame.box.x + mouseDown.lastValidBoxDelta.x,
-              y: frame.box.y + mouseDown.lastValidBoxDelta.y,
-            },
-          });
+        for (let uuid of mouseDown.uuids) {
+          if (mouseDown.trashing) {
+            frames.remove(uuid);
+          } else {
+            const frame = frames.all[uuid].value;
+            frames.update(uuid, {
+              box: {
+                ...frame.box,
+                x: frame.box.x + mouseDown.lastValidBoxDelta.x,
+                y: frame.box.y + mouseDown.lastValidBoxDelta.y,
+              },
+            });
+          }
         }
+
         break;
       }
       case "resizeFrame": {
@@ -517,12 +543,18 @@ async function createStore() {
     return framesInViewport.indexOf(uuid) !== -1;
   }
 
-  function boxIsValid(box: Box, excludeUuid?: string) {
+  function boxIsValid(box: Box, excludeUuids: string[] = []) {
     if (box.w * box.h < 4 || box.w < 2 || box.h < 2) return false;
     const viewportFrames = Object.values(frames.all).filter(
-      (f) => f.uuid !== excludeUuid && frameIsInViewport(f.uuid)
+      (f) => excludeUuids.indexOf(f.uuid) === -1 && frameIsInViewport(f.uuid)
     );
     return !viewportFrames.some((f) => isTouching(f.value.box, box));
+  }
+
+  function touchingFrames(box: Box) {
+    return Object.values(frames.all).filter(
+      (f) => frameIsInViewport(f.uuid) && isTouching(f.value.box, box)
+    );
   }
 
   // ██╗███╗   ██╗████████╗███████╗██████╗ ███████╗ █████╗  ██████╗███████╗
@@ -575,6 +607,9 @@ async function createStore() {
     },
     get currentColor() {
       return currentColor;
+    },
+    get framesSelected() {
+      return framesSelected;
     },
   };
 }

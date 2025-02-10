@@ -77,7 +77,7 @@
   <button
     style={`padding: ${frameIconPadding}px`}
     class="size-full z-100 absolute top-0 left-0 cursor-move flexcc text-black/25"
-    onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", p.uuid])}
+    onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", [p.uuid]])}
   >
     {#if !asset}
       <MoveIcon class="size-full max-w-full max-h-full" />

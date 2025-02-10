@@ -26,30 +26,37 @@
       S.currentAction.type === "none" ||
       S.currentAction.type === "pan" ||
       S.currentAction.type === "createFrame" ||
-      S.currentAction.type === "painting" ||
-      S.currentAction.uuid !== uuid
+      S.currentAction.type === "painting"
     ) {
       return [frame.box, null];
     }
 
     if (S.currentAction.type === "moveFrame") {
-      const resolved = {
-        ...frame.box,
-        x: frame.box.x + S.currentAction.boxDelta.x,
-        y: frame.box.y + S.currentAction.boxDelta.y,
-      };
-      if (!S.currentAction.isValid) {
-        const resolvedValid = {
+      if (S.currentAction.uuids.indexOf(uuid) !== -1) {
+        const resolved = {
           ...frame.box,
-          x: frame.box.x + S.currentAction.lastValidBoxDelta.x,
-          y: frame.box.y + S.currentAction.lastValidBoxDelta.y,
+          x: frame.box.x + S.currentAction.boxDelta.x,
+          y: frame.box.y + S.currentAction.boxDelta.y,
         };
-        return [resolved, resolvedValid];
+        if (!S.currentAction.isValid) {
+          const resolvedValid = {
+            ...frame.box,
+            x: frame.box.x + S.currentAction.lastValidBoxDelta.x,
+            y: frame.box.y + S.currentAction.lastValidBoxDelta.y,
+          };
+          return [resolved, resolvedValid];
+        } else {
+          return [resolved, null];
+        }
       } else {
-        return [resolved, null];
+        return [frame.box, null];
       }
     } else if (S.currentAction.type === "resizeFrame") {
-      return [S.currentAction.lastValidBox, null];
+      if (S.currentAction.uuid === uuid) {
+        return [S.currentAction.lastValidBox, null];
+      } else {
+        return [frame.box, null];
+      }
     } else {
       return [frame.box, null];
     }
@@ -202,16 +209,21 @@
           S.currentAction.type === "resizeFrame" &&
           S.currentAction.uuid === uuid}
         {@const moving =
-          S.currentAction.type === "moveFrame" && S.currentAction.uuid === uuid}
+          S.currentAction.type === "moveFrame" &&
+          S.currentAction.uuids.indexOf(uuid) !== -1}
         {@const boxStyle = S.ui.boxStyle(box)}
         {@const transformOriginStyle = moving
           ? `transform-origin: ${S.currentAction.pickX * 100}% ${S.currentAction.pickY * 100}%`
           : ""}
         {@const trashing =
           S.currentAction.type === "moveFrame" &&
-          S.currentAction.uuid === uuid &&
+          S.currentAction.uuids.indexOf(uuid) !== -1 &&
           S.currentAction.trashing}
         {@const borderRadius = (1 / S.pos.z) * (S.pos.z > 0.2 ? 6 : 4)}
+        {@const isBeingSelected =
+          S.currentAction.type === "createFrame"
+            ? S.currentAction.touchingFrames.indexOf(uuid) !== -1
+            : S.framesSelected.indexOf(uuid) !== -1}
 
         <!-- Shadow only element z-30 => So shadows don't overlap over other frames -->
         <div
@@ -266,6 +278,15 @@
               },
             ]}
           >
+            {#if isBeingSelected}
+              <button
+                aria-label="Move selected frames"
+                onmousedown={(ev) =>
+                  S.ev.mousedown(ev, ["frame-picker", S.framesSelected])}
+                class="size-full bg-blue-500/50 absolute z-150 cursor-move"
+                style={`border-radius: ${borderRadius}px`}
+              ></button>
+            {/if}
             <FrameContent {frame} {uuid} />
           </div>
         </div>
