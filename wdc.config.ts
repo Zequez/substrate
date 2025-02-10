@@ -1,9 +1,15 @@
 import { defineConfig } from "wdc";
 
 export default defineConfig({
-  version: "0.1.3",
+  version: "0.1.4",
   id: "substrate",
   changeLog: `
+# 0.1.4
+  - Added WASD keyboard-based movement
+  - You can now select frames and move them or trash them all together
+  - Some code clean up and organization
+  - Improved agents display; show avatars
+  - Added tooltips
 # 0.1.3
   - Instant syncing with Generic DNA
   - You can now paint the canvas grid blocks with colors
