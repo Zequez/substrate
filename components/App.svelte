@@ -6,15 +6,15 @@
   import CompressIcon from "~icons/fa6-solid/compress";
 
   import SS from "../lib/stores/main.svelte";
-  import profiles from "../lib/stores/profiles.svelte";
+
   import FrameContent from "./FrameContent.svelte";
   import FrameInteracting from "./FrameInteracting.svelte";
   import GhostBox from "./GhostBox.svelte";
   import PixelCanvas from "./spaceColoring/PixelCanvas.svelte";
   import ColorPicker from "./spaceColoring/ColorPicker.svelte";
   import TrashBin from "./TrashBin.svelte";
+  import Profiles from "./Profiles.svelte";
   import { c, stickyStyle } from "../lib/utils";
-  // import Coral from "./Coral.svelte";
   // import GenericDnaSandbox from "./GenericDnaSandbox.svelte";
 
   const S = SS.store;
@@ -51,15 +51,7 @@
 
 <!-- PROFILES -->
 
-<div class="absolute top-0 right-0 bg-blue-500 rounded-bl-md z-120">
-  {#each Object.entries(profiles.participantsProfiles) as [agent, profile]}
-    {#if profile === "unknown" || profile === "none"}
-      {agent.slice(0, 5)}
-    {:else}
-      {profile.nickname}
-    {/if}
-  {/each}
-</div>
+<Profiles />
 
 <!-- TRASH BUTTON -->
 
