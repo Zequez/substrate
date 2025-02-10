@@ -1,66 +1,24 @@
 <script lang="ts">
   import cx from "classnames";
-  import TrashIcon from "~icons/fa6-solid/trash";
+
   import SquareIcon from "~icons/fa6-regular/square";
   import ExpandIcon from "~icons/fa6-solid/expand";
   import CompressIcon from "~icons/fa6-solid/compress";
 
   import SS from "../lib/stores/main.svelte";
   import profiles from "../lib/stores/profiles.svelte";
-  import { type BoxedFrame, type Box, isTouching } from "../lib/Frame";
-  import { PALLETTE } from "../lib/stores/AgentColorPixels.svelte";
   import FrameContent from "./FrameContent.svelte";
   import FrameInteracting from "./FrameInteracting.svelte";
   import GhostBox from "./GhostBox.svelte";
-  import PixelCanvas from "./PixelCanvas.svelte";
-  import ColorPicker from "./ColorPicker.svelte";
+  import PixelCanvas from "./spaceColoring/PixelCanvas.svelte";
+  import ColorPicker from "./spaceColoring/ColorPicker.svelte";
+  import TrashBin from "./TrashBin.svelte";
   import { c, stickyStyle } from "../lib/utils";
   // import Coral from "./Coral.svelte";
   // import GenericDnaSandbox from "./GenericDnaSandbox.svelte";
 
   const S = SS.store;
   S.mountInit();
-
-  function resolveFrameBox(uuid: string, frame: BoxedFrame): [Box, Box | null] {
-    if (
-      S.currentAction.type === "none" ||
-      S.currentAction.type === "pan" ||
-      S.currentAction.type === "createFrame" ||
-      S.currentAction.type === "painting"
-    ) {
-      return [frame.box, null];
-    }
-
-    if (S.currentAction.type === "moveFrame") {
-      if (S.currentAction.uuids.indexOf(uuid) !== -1) {
-        const resolved = {
-          ...frame.box,
-          x: frame.box.x + S.currentAction.boxDelta.x,
-          y: frame.box.y + S.currentAction.boxDelta.y,
-        };
-        if (!S.currentAction.isValid) {
-          const resolvedValid = {
-            ...frame.box,
-            x: frame.box.x + S.currentAction.lastValidBoxDelta.x,
-            y: frame.box.y + S.currentAction.lastValidBoxDelta.y,
-          };
-          return [resolved, resolvedValid];
-        } else {
-          return [resolved, null];
-        }
-      } else {
-        return [frame.box, null];
-      }
-    } else if (S.currentAction.type === "resizeFrame") {
-      if (S.currentAction.uuid === uuid) {
-        return [S.currentAction.lastValidBox, null];
-      } else {
-        return [frame.box, null];
-      }
-    } else {
-      return [frame.box, null];
-    }
-  }
 
   $effect(() => {
     if (S.currentAction.type !== "none") {
@@ -69,6 +27,8 @@
       document.body.classList.remove("select-none");
     }
   });
+
+  const A = $derived(S.currentAction);
 </script>
 
 <!-- <GenericDnaInspector /> -->
@@ -77,14 +37,17 @@
 <!-- PIXELS -->
 
 <PixelCanvas
-  pixels={S.pixels}
-  buffer={S.pixelsBuffer}
+  pixels={S.pixelsInViewport}
+  buffer={S.spaceColoring.buffer}
   pos={S.pos}
   gridSize={S.grid.size}
 />
 
 <!-- COLOR PICKER -->
-<ColorPicker />
+<ColorPicker
+  color={S.spaceColoring.color}
+  onPick={(ev, i) => S.ev.click(ev, ["set-pallette", i])}
+/>
 
 <!-- PROFILES -->
 
@@ -100,40 +63,12 @@
 
 <!-- TRASH BUTTON -->
 
-<button
-  class={cx(
-    "h-20 w-20 z-100 transition-opacity absolute top-4 left-1/2 shadow-lg rounded-full -transform-x-1/2 absolute",
-    {
-      "opacity-0 pointer-events-none": S.currentAction.type !== "moveFrame",
-      "opacity-100": S.currentAction.type === "moveFrame",
-    }
-  )}
-  onmousemove={(ev) => S.ev.mousemove(ev, ["trash"])}
-  onmouseup={S.ev.mouseup}
->
-  <div
-    class={cx(
-      "flexcc bg-red-500 b-2 b-black/5 relative z-20 text-white transition-all transform-origin-top-right transition-duration-200 text-2xl h-full w-full rounded-full ",
-      {
-        "opacity-80": S.currentAction.type !== "moveFrame",
-        "opacity-100": S.currentAction.type === "moveFrame",
-        "scale-85! translate-x-[5px] -translate-y-[5px] skew-x-[8deg] skew-y-[8deg]":
-          S.currentAction.type === "moveFrame" && S.currentAction.trashing,
-      }
-    )}
-  >
-    <TrashIcon />
-  </div>
-  <div
-    class={cx(
-      "h-full w-full absolute z-10 top-0 left-0 bg-gray-800 b-2 b-white/10 rounded-full",
-      {
-        "opacity-80": S.currentAction.type !== "moveFrame",
-        "opacity-100": S.currentAction.type === "moveFrame",
-      }
-    )}
-  ></div>
-</button>
+<TrashBin
+  onMouseMove={(ev) => S.ev.mousemove(ev, ["trash"])}
+  onMouseUp={S.ev.mouseup}
+  show={A.type === "moveFrame"}
+  opened={A.type === "moveFrame" && A.trashing}
+/>
 
 <!-- ZOOM INDICATOR AND RESET -->
 
@@ -180,7 +115,7 @@
 
   <!-- GRID PATTERN -->
   <canvas
-    onmousedown={S.ev.mousedown}
+    onmousedown={(ev) => S.ev.mousedown(ev, ["grid"])}
     class="h-full w-full absolute top-0 left-0 z-10"
     bind:this={S.grid.el}
   ></canvas>
@@ -201,102 +136,98 @@
     {/if}
 
     <!-- ALL THE CREATED FRAMES -->
-    {#each Object.entries(S.frames) as [uuid, frameWrapper] (uuid)}
-      {#if S.frameIsInViewport(uuid)}
-        {@const frame = frameWrapper.value}
-        {@const [box, validBox] = resolveFrameBox(uuid, frame)}
-        {@const resizing =
-          S.currentAction.type === "resizeFrame" &&
-          S.currentAction.uuid === uuid}
-        {@const moving =
-          S.currentAction.type === "moveFrame" &&
-          S.currentAction.uuids.indexOf(uuid) !== -1}
-        {@const boxStyle = S.ui.boxStyle(box)}
-        {@const transformOriginStyle = moving
-          ? `transform-origin: ${S.currentAction.pickX * 100}% ${S.currentAction.pickY * 100}%`
-          : ""}
-        {@const trashing =
-          S.currentAction.type === "moveFrame" &&
-          S.currentAction.uuids.indexOf(uuid) !== -1 &&
-          S.currentAction.trashing}
-        {@const borderRadius = (1 / S.pos.z) * (S.pos.z > 0.2 ? 6 : 4)}
-        {@const isBeingSelected =
-          S.currentAction.type === "createFrame"
-            ? S.currentAction.touchingFrames.indexOf(uuid) !== -1
-            : S.framesSelected.indexOf(uuid) !== -1}
+    {#each S.viewportFrames as wrappedFrame (wrappedFrame.uuid)}
+      {@const uuid = wrappedFrame.uuid}
+      {@const frame = wrappedFrame.value}
+      {@const [box, validBox] = S.resolveFrameBox(uuid, frame)}
 
-        <!-- Shadow only element z-30 => So shadows don't overlap over other frames -->
-        <div
-          class={cx("absolute top-0 left-0", {
-            "z-30": !moving,
-            "duration-150 transition-property-[transform,width,height]":
-              !moving && !resizing,
-            "z-50 transition-none": moving,
-          })}
-          style={boxStyle}
-        >
-          <div
-            use:stickyStyle={transformOriginStyle}
-            use:c={[
-              "size-full",
-              "duration-150 transition-property-[transform,opacity,box-shadow]",
-              {
-                "scale-50": trashing,
-                "shadow-[0px_0px_2px_3px_#0003] scale-100": !moving,
-                "shadow-[0px_0px_2px_3px_#0002,0px_0px_10px_3px_#0005] scale-102":
-                  moving && !trashing,
-              },
-            ]}
-            style={`border-radius: ${borderRadius}px`}
-          ></div>
-        </div>
+      {@const resizing = A.type === "resizeFrame" && A.uuid === uuid}
 
-        <!-- Solid frame element z-40 -->
+      {@const moving = A.type === "moveFrame" && A.uuids.indexOf(uuid) !== -1}
+      {@const trashing = moving && A.uuids.indexOf(uuid) !== -1 && A.trashing}
+
+      {@const isBeingSelected =
+        A.type === "createFrame"
+          ? A.touchingFrames.indexOf(uuid) !== -1
+          : S.framesSelected.indexOf(uuid) !== -1}
+
+      {@const boxStyle = S.ui.boxStyle(box)}
+      {@const transformOriginStyle = moving
+        ? `transform-origin: ${A.pickX * 100}% ${A.pickY * 100}%`
+        : ""}
+      {@const borderRadius = (1 / S.pos.z) * (S.pos.z > 0.2 ? 6 : 4)}
+
+      <!-- Shadow only element z-30 => So shadows don't overlap over other frames -->
+      <div
+        class={cx("absolute top-0 left-0", {
+          "z-30": !moving,
+          "duration-150 transition-property-[transform,width,height]":
+            !moving && !resizing,
+          "z-50 transition-none": moving,
+        })}
+        style={boxStyle}
+      >
         <div
+          use:stickyStyle={transformOriginStyle}
           use:c={[
-            "absolute top-0 left-0",
+            "size-full",
+            "duration-150 transition-property-[transform,opacity,box-shadow]",
             {
-              "z-40": !moving,
-              "duration-150 transition-property-[transform,width,height]":
-                !moving && !resizing,
-              "z-60": moving,
-              "z-80": S.lastInteractionUuid === uuid,
+              "scale-50": trashing,
+              "shadow-[0px_0px_2px_3px_#0003] scale-100": !moving,
+              "shadow-[0px_0px_2px_3px_#0002,0px_0px_10px_3px_#0005] scale-102":
+                moving && !trashing,
             },
           ]}
-          style={boxStyle}
+          style={`border-radius: ${borderRadius}px`}
+        ></div>
+      </div>
+
+      <!-- Solid frame element z-40 -->
+      <div
+        use:c={[
+          "absolute top-0 left-0",
+          {
+            "z-40": !moving,
+            "duration-150 transition-property-[transform,width,height]":
+              !moving && !resizing,
+            "z-60": moving,
+            "z-80": S.lastInteractionUuid === uuid,
+          },
+        ]}
+        style={boxStyle}
+      >
+        <div
+          style={`border-radius: ${borderRadius}px`}
+          use:stickyStyle={transformOriginStyle}
+          use:c={[
+            "size-full",
+            "duration-150 transition-transform",
+            "bg-gray-100 b-gray-300 shadow-[inset_0px_0px_1px_0px_#0003]",
+            {
+              "scale-50 opacity-30": trashing,
+              "scale-102 opacity-100": moving && !trashing,
+            },
+          ]}
         >
-          <div
-            style={`border-radius: ${borderRadius}px`}
-            use:stickyStyle={transformOriginStyle}
-            use:c={[
-              "size-full",
-              "duration-150 transition-transform",
-              "bg-gray-100 b-gray-300 shadow-[inset_0px_0px_1px_0px_#0003]",
-              {
-                "scale-50 opacity-30": trashing,
-                "scale-102 opacity-100": moving && !trashing,
-              },
-            ]}
-          >
-            {#if isBeingSelected}
-              <button
-                aria-label="Move selected frames"
-                onmousedown={(ev) =>
-                  S.ev.mousedown(ev, ["frame-picker", S.framesSelected])}
-                class="size-full bg-blue-500/50 absolute z-150 cursor-move"
-                style={`border-radius: ${borderRadius}px`}
-              ></button>
-            {/if}
-            <FrameContent {frame} {uuid} />
-          </div>
+          {#if isBeingSelected}
+            <button
+              aria-label="Move selected frames"
+              onmousedown={(ev) =>
+                S.ev.mousedown(ev, ["frame-picker", S.framesSelected])}
+              class="size-full bg-blue-500/50 absolute z-150 cursor-move"
+              style={`border-radius: ${borderRadius}px`}
+            ></button>
+          {/if}
+          <FrameContent {frame} {uuid} />
         </div>
+      </div>
 
-        {#if validBox}
-          <GhostBox box={validBox} lighter={false} />
-        {/if}
-
-        <FrameInteracting {frame} {uuid} {boxStyle} />
+      {#if validBox}
+        <GhostBox box={validBox} lighter={false} />
       {/if}
+
+      <FrameInteracting {frame} {uuid} {boxStyle} />
     {/each}
   </div>
 </div>

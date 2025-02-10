@@ -19,11 +19,6 @@ function save(key: string) {
   localStorage.setItem(key, JSON.stringify(state[key]));
 }
 
-// $effect(() => {
-//   console.log("Localstorage effect");
-//   $inspect(state);
-// });
-
 function localStorageSyncedState<T>(key: string, defaultValue: T) {
   // Try to load the initial value from localStorage
   load(key);
@@ -31,17 +26,6 @@ function localStorageSyncedState<T>(key: string, defaultValue: T) {
     state[key] = defaultValue;
     save(key);
   }
-
-  // If there's a saved value, parse it, otherwise use the default value
-  // const initialValue: T = savedValue ? JSON.parse(savedValue) : defaultValue;
-
-  // let state = $state(initialValue);
-
-  // $effect(() => {
-  //   console.log(`LOCALSTORAGE ${key} UPDATING`, $inspect(state));
-  //   // Save the store value to localStorage whenever it changes
-  //   localStorage.setItem(key, JSON.stringify(state));
-  // });
 
   return {
     get value() {

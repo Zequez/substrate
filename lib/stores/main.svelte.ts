@@ -12,12 +12,10 @@ import thingsStore from "./things";
 import assets from "./assets.svelte";
 import profiles from "./profiles.svelte";
 import clients from "../clients";
-import uiStore from "./ui.svelte";
-import agentColorPixels, {
-  PALLETTE,
-  type PixelsFlat,
-} from "./AgentColorPixels.svelte";
-import { bresenhamLine } from "../../lib/utils";
+import spaceStore from "./space.svelte";
+import keyboardStore from "./keyboard.svelte";
+import spaceColoring, { type PixelsFlat } from "./spaceColoring.svelte";
+import { bresenhamLine, resolveScreenEdgePanning } from "../../lib/utils";
 
 export type BoxResizeHandles =
   | "l"
@@ -32,6 +30,7 @@ export type BoxResizeHandles =
 async function createStore() {
   const appEl = document.getElementById("app")!;
 
+  // Frame stuff
   let frames = $state(
     thingsStore.typeOfThing<"BoxedFrame", BoxedFrame>(
       "BoxedFrame",
@@ -39,44 +38,36 @@ async function createStore() {
     )
   );
 
-  let colorPixels = agentColorPixels.createStore();
-  let currentColor = $state(1);
+  const frameHash = clients.wal ? clients.wal.hrl[1] : null;
+  const frame = frameHash ? frames.findByHash(frameHash) : null;
+  let framesSelected = $state<string[]>([]);
 
+  const fitAllBox = $derived(
+    containingBox(frames.allFlat.map((f) => f.value.box))
+  );
+  const framesInViewport = $derived.by(() => {
+    return frames.allFlat.filter((f) => {
+      return isTouching(ui.pos.viewport, f.value.box);
+    });
+  });
+  let lastInteractionUuid = $state<string | null>(null);
+
+  // Space stuff
+  let isInFullscreen = $state<boolean>(!!document.fullscreenElement);
+  const ui = spaceStore({ centerAt: frame ? frame.value.box : null });
+  const keyboardPan = keyboardStore((x, y) => {
+    ui.mouse.pan(x * ui.grid.size * 1.5, y * ui.grid.size * 1.5);
+  });
+  let isOnGrid = $state(false);
+
+  // Coloring pixels stuff
+  let colorPixels = spaceColoring.createStore();
   const colorPixelsInViewport: PixelsFlat[] = $derived.by(() => {
     return colorPixels.pixels.filter(([x, y]) => {
       const vp = ui.pos.viewport;
       return x >= vp.x && x <= vp.x + vp.w && y >= vp.y && y <= vp.y + vp.h;
     });
   });
-
-  const frameHash = clients.wal ? clients.wal.hrl[1] : null;
-  const frame = frameHash ? frames.findByHash(frameHash) : null;
-  const fitAllBox = $derived(
-    containingBox(Object.values(frames.all).map((f) => f.value.box))
-  );
-  const framesInViewport: string[] = $derived.by(() => {
-    return Object.values(frames.all)
-      .filter((f) => {
-        return isTouching(ui.pos.viewport, f.value.box);
-      })
-      .map((f) => f.uuid);
-  });
-  let lastInteractionUuid = $state<string | null>(null);
-  let isInFullscreen = $state<boolean>(!!document.fullscreenElement);
-
-  const ui = uiStore({ centerAt: frame ? frame.value.box : null });
-  let keyboardMove = $state<{
-    up: boolean;
-    down: boolean;
-    left: boolean;
-    right: boolean;
-  }>({
-    up: false,
-    down: false,
-    left: false,
-    right: false,
-  });
-  let framesSelected = $state<string[]>([]);
 
   // ██╗███╗   ██╗██╗████████╗
   // ██║████╗  ██║██║╚══██╔══╝
@@ -88,6 +79,7 @@ async function createStore() {
   function mountInit() {
     profiles.mountInit();
     ui.mountInit();
+    keyboardPan.mountInit();
 
     $effect(() => {
       if (fitAllBox) {
@@ -99,71 +91,19 @@ async function createStore() {
       isInFullscreen = !!document.fullscreenElement;
     });
 
-    let keyboardMoveTimeout: any = null;
-    function handleKeyboardMove() {
-      let x = 0;
-      let y = 0;
-      if (keyboardMove.up) y += 1;
-      if (keyboardMove.down) y -= 1;
-      if (keyboardMove.left) x += 1;
-      if (keyboardMove.right) x -= 1;
-      if (x || y) {
-        ui.mouse.pan(x * ui.grid.size * 1.5, y * ui.grid.size * 1.5);
-        keyboardMoveTimeout = setTimeout(handleKeyboardMove, 25);
-      } else {
-        keyboardMoveTimeout = null;
-      }
-    }
-
-    window.addEventListener("keydown", (ev) => {
-      if (ev.code === "KeyS") {
-        keyboardMove.down = true;
-      } else if (ev.code === "KeyW") {
-        keyboardMove.up = true;
-      } else if (ev.code === "KeyA") {
-        keyboardMove.left = true;
-      } else if (ev.code === "KeyD") {
-        keyboardMove.right = true;
-      }
-      if (!keyboardMoveTimeout) handleKeyboardMove();
-    });
-
-    window.addEventListener("keyup", (ev) => {
-      if (ev.code === "KeyS") {
-        keyboardMove.down = false;
-      } else if (ev.code === "KeyW") {
-        keyboardMove.up = false;
-      } else if (ev.code === "KeyA") {
-        keyboardMove.left = false;
-      } else if (ev.code === "KeyD") {
-        keyboardMove.right = false;
-      }
-    });
-
     let timeoutId: any = null;
     const panSize = (ui.grid.size * 2) / 1.5;
     const edge = 10;
     function processFullscreenEdgePanning() {
-      const x = ui.mouse.clientX;
-      const y = ui.mouse.clientY;
-      const w = ui.width;
-      const h = ui.height;
-      if (x <= edge * 2 && y <= edge * 2) {
-        ui.mouse.pan(panSize, panSize);
-      } else if (x >= w - edge * 2 && y <= edge * 2) {
-        ui.mouse.pan(-panSize, panSize);
-      } else if (x <= edge * 2 && y >= h - edge * 2) {
-        ui.mouse.pan(panSize, -panSize);
-      } else if (x >= w - edge * 2 && y >= h - edge * 2) {
-        ui.mouse.pan(-panSize, -panSize);
-      } else if (x <= edge) {
-        ui.mouse.pan(panSize, 0);
-      } else if (x >= w - edge) {
-        ui.mouse.pan(-panSize, 0);
-      } else if (y <= edge) {
-        ui.mouse.pan(0, panSize);
-      } else if (y >= h - edge) {
-        ui.mouse.pan(0, -panSize);
+      const [panX, panY] = resolveScreenEdgePanning(
+        edge,
+        ui.mouse.clientX,
+        ui.mouse.clientY,
+        ui.width,
+        ui.height
+      );
+      if (panX || panY) {
+        ui.mouse.pan(panX * panSize, panY * panSize);
       }
       timeoutId = setTimeout(processFullscreenEdgePanning, 25);
     }
@@ -233,7 +173,8 @@ async function createStore() {
 
   function handleMouseDown(
     ev: MouseEvent,
-    target?:
+    target:
+      | ["grid"]
       | ["frame-picker", string[]]
       | ["frame-resize", BoxResizeHandles, string]
       | ["copy-link", string]
@@ -242,106 +183,103 @@ async function createStore() {
       | ["toggle-fullscreen"]
       | ["paint-start"]
   ) {
-    // console.log("Mouse down", target);
-    if (target) {
-      ev.stopPropagation();
-      switch (target[0]) {
-        case "copy-link": {
-          console.log("COPYING LINK FOR ", target[1]);
-          // Copy to clipboard
-          const [wal, url] = frames.link(target[1]);
-          if (url && wal) {
-            navigator.clipboard.writeText(url);
-            if (clients.weave) {
-              clients.weave.assets.assetToPocket(wal);
-            }
-          } else {
-            alert("Frame isn't on the network yet");
-          }
-
-          break;
-        }
-        case "frame-picker": {
-          const [startX, startY] = ui.mouseToGridPos(ev.clientX, ev.clientY);
-          const t = (ev.currentTarget as HTMLDivElement).parentElement!;
-          const { left, top, width, height } = t.getBoundingClientRect();
-          const pickX = (ev.clientX - left) / width;
-          const pickY = (ev.clientY - top) / height;
-
+    ev.stopPropagation();
+    switch (target[0]) {
+      case "grid": {
+        if (ev.button === 1) {
+          mouseDown = { type: "pan" };
+        } else if (ev.button === 0) {
           mouseDown = {
-            type: "moveFrame",
-            uuids: target[1],
-            startX,
-            startY,
-            pickX,
-            pickY,
-            boxDelta: {
-              x: 0,
-              y: 0,
-            },
-            lastValidBoxDelta: { x: 0, y: 0 },
-            isValid: true,
-            trashing: false,
+            type: "createFrame",
+            box: ui.mouse.box,
+            boxNormalized: ui.mouse.box,
+            isValid: boxIsValid(ui.mouse.box),
+            touchingFrames: [],
           };
-          break;
         }
-        case "frame-resize": {
-          const [startX, startY] = ui.mouseToGridPos(ev.clientX, ev.clientY);
-          mouseDown = {
-            type: "resizeFrame",
-            pos: target[1],
-            uuid: target[2],
-            startX,
-            startY,
-            newBox: frames.all[target[2]].value.box,
-            lastValidBox: frames.all[target[2]].value.box,
-            isValid: true,
-          };
-          break;
-        }
-        case "remove-asset": {
-          frames.update(target[1], {
-            assetUrl: "",
-          });
-          break;
-        }
-        case "fit-all": {
-          if (fitAllBox) {
-            ui.panZoomToFit(fitAllBox);
-          }
-          break;
-        }
-        case "toggle-fullscreen": {
-          if (document.fullscreenElement) {
-            document.exitFullscreen();
-          } else {
-            appEl.requestFullscreen();
-          }
-          break;
-        }
-        case "paint-start": {
-          if (ev.button === 2) {
-            const [x, y] = ui.mouseToGridPos(ev.clientX, ev.clientY);
-            mouseDown = {
-              type: "painting",
-              lastX: x,
-              lastY: y,
-            };
-            colorPixels.paint(x, y, currentColor);
-          }
-        }
+        break;
       }
-    } else {
-      if (ev.button === 1) {
-        mouseDown = { type: "pan" };
-      } else if (ev.button === 0) {
+      case "copy-link": {
+        const [wal, url] = frames.link(target[1]);
+        if (url && wal) {
+          navigator.clipboard.writeText(url);
+          if (clients.weave) {
+            clients.weave.assets.assetToPocket(wal);
+          }
+        } else {
+          alert("Frame isn't on the network yet");
+        }
+
+        break;
+      }
+      case "frame-picker": {
+        const [startX, startY] = ui.mouseToGridPos(ev.clientX, ev.clientY);
+        const t = (ev.currentTarget as HTMLDivElement).parentElement!;
+        const { left, top, width, height } = t.getBoundingClientRect();
+        const pickX = (ev.clientX - left) / width;
+        const pickY = (ev.clientY - top) / height;
+
         mouseDown = {
-          type: "createFrame",
-          box: ui.mouse.box,
-          boxNormalized: ui.mouse.box,
-          isValid: boxIsValid(ui.mouse.box),
-          touchingFrames: [],
+          type: "moveFrame",
+          uuids: target[1],
+          startX,
+          startY,
+          pickX,
+          pickY,
+          boxDelta: {
+            x: 0,
+            y: 0,
+          },
+          lastValidBoxDelta: { x: 0, y: 0 },
+          isValid: true,
+          trashing: false,
         };
+        break;
+      }
+      case "frame-resize": {
+        const [startX, startY] = ui.mouseToGridPos(ev.clientX, ev.clientY);
+        mouseDown = {
+          type: "resizeFrame",
+          pos: target[1],
+          uuid: target[2],
+          startX,
+          startY,
+          newBox: frames.all[target[2]].value.box,
+          lastValidBox: frames.all[target[2]].value.box,
+          isValid: true,
+        };
+        break;
+      }
+      case "remove-asset": {
+        frames.update(target[1], {
+          assetUrl: "",
+        });
+        break;
+      }
+      case "fit-all": {
+        if (fitAllBox) {
+          ui.panZoomToFit(fitAllBox);
+        }
+        break;
+      }
+      case "toggle-fullscreen": {
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+        } else {
+          appEl.requestFullscreen();
+        }
+        break;
+      }
+      case "paint-start": {
+        if (ev.button === 2) {
+          const [x, y] = ui.mouseToGridPos(ev.clientX, ev.clientY);
+          mouseDown = {
+            type: "painting",
+            lastX: x,
+            lastY: y,
+          };
+          colorPixels.paint(x, y);
+        }
       }
     }
   }
@@ -350,10 +288,7 @@ async function createStore() {
   // MOUSE MOVE
   /************************************** */
 
-  let isOnGrid = $state(false);
-
   function handleMouseMove(ev: MouseEvent, target?: ["trash"]) {
-    // console.log("Mouse move, target: ", target);
     ui.mouse.setXY(ev.clientX, ev.clientY);
 
     isOnGrid = ev.target === ui.grid.el;
@@ -376,9 +311,9 @@ async function createStore() {
         mouseDown.boxNormalized = normalizeBox(mouseDown.box);
         mouseDown.isValid = boxIsValid(mouseDown.boxNormalized);
 
-        const framesTouching = touchingFrames(mouseDown.boxNormalized).map(
-          (f) => f.uuid
-        );
+        const framesTouching = framesInViewportBeingTouched(
+          mouseDown.boxNormalized
+        ).map((f) => f.uuid);
         mouseDown.touchingFrames = framesTouching;
         break;
       }
@@ -435,7 +370,7 @@ async function createStore() {
         const [x, y] = ui.mouseToGridPos(ev.clientX, ev.clientY);
         const points = bresenhamLine(mouseDown.lastX, mouseDown.lastY, x, y);
         points.forEach(([x, y]) => {
-          colorPixels.paint(x, y, currentColor);
+          colorPixels.paint(x, y);
         });
 
         mouseDown.lastX = x;
@@ -512,19 +447,20 @@ async function createStore() {
 
   async function handleClick(
     ev: MouseEvent,
-    target?: ["pick-asset", string] | ["set-pallette", number]
+    target: ["pick-asset", string] | ["set-pallette", number]
   ) {
-    if (target) {
-      if (target[0] === "pick-asset") {
+    switch (target[0]) {
+      case "pick-asset":
         const assetData = await assets.pickAsset();
         if (assetData) {
           frames.update(target[1], {
             assetUrl: assetData.key,
           });
         }
-      } else if (target[0] === "set-pallette") {
-        currentColor = target[1];
-      }
+        break;
+      case "set-pallette":
+        colorPixels.setColor(target[1]);
+        break;
     }
   }
 
@@ -539,22 +475,54 @@ async function createStore() {
 
   // UTILS
 
-  function frameIsInViewport(uuid: string): boolean {
-    return framesInViewport.indexOf(uuid) !== -1;
-  }
-
   function boxIsValid(box: Box, excludeUuids: string[] = []) {
     if (box.w * box.h < 4 || box.w < 2 || box.h < 2) return false;
-    const viewportFrames = Object.values(frames.all).filter(
-      (f) => excludeUuids.indexOf(f.uuid) === -1 && frameIsInViewport(f.uuid)
+    const testAgainstFrames = framesInViewport.filter(
+      (f) => excludeUuids.indexOf(f.uuid) === -1
     );
-    return !viewportFrames.some((f) => isTouching(f.value.box, box));
+    return !testAgainstFrames.some((f) => isTouching(f.value.box, box));
   }
 
-  function touchingFrames(box: Box) {
-    return Object.values(frames.all).filter(
-      (f) => frameIsInViewport(f.uuid) && isTouching(f.value.box, box)
-    );
+  function framesInViewportBeingTouched(box: Box) {
+    return framesInViewport.filter((f) => isTouching(f.value.box, box));
+  }
+
+  function resolveFrameBox(uuid: string, frame: BoxedFrame): [Box, Box | null] {
+    switch (mouseDown.type) {
+      case "none":
+      case "pan":
+      case "createFrame":
+      case "painting":
+        return [frame.box, null];
+      case "moveFrame": {
+        if (mouseDown.uuids.indexOf(uuid) !== -1) {
+          const resolved = {
+            ...frame.box,
+            x: frame.box.x + mouseDown.boxDelta.x,
+            y: frame.box.y + mouseDown.boxDelta.y,
+          };
+          if (!mouseDown.isValid) {
+            const resolvedValid = {
+              ...frame.box,
+              x: frame.box.x + mouseDown.lastValidBoxDelta.x,
+              y: frame.box.y + mouseDown.lastValidBoxDelta.y,
+            };
+            return [resolved, resolvedValid];
+          } else {
+            return [resolved, null];
+          }
+        } else {
+          return [frame.box, null];
+        }
+      }
+      case "resizeFrame": {
+        if (mouseDown.uuid === uuid) {
+          return [mouseDown.lastValidBox, null];
+        } else {
+          return [frame.box, null];
+        }
+      }
+    }
   }
 
   // ██╗███╗   ██╗████████╗███████╗██████╗ ███████╗ █████╗  ██████╗███████╗
@@ -580,6 +548,7 @@ async function createStore() {
     pos: ui.pos,
     grid: ui.grid,
     mouse: ui.mouse,
+    resolveFrameBox,
     get currentAction() {
       return mouseDown;
     },
@@ -592,21 +561,20 @@ async function createStore() {
     get frames() {
       return frames.all;
     },
+    get viewportFrames() {
+      return framesInViewport;
+    },
     get lastInteractionUuid() {
       return lastInteractionUuid;
     },
     get isInFullscreen() {
       return isInFullscreen;
     },
-    frameIsInViewport,
-    get pixels() {
+    get spaceColoring() {
+      return colorPixels;
+    },
+    get pixelsInViewport() {
       return colorPixelsInViewport;
-    },
-    get pixelsBuffer() {
-      return colorPixels.buffer;
-    },
-    get currentColor() {
-      return currentColor;
     },
     get framesSelected() {
       return framesSelected;

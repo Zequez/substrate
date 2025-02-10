@@ -109,3 +109,31 @@ export function bresenhamLine(
 
   return points;
 }
+
+export function resolveScreenEdgePanning(
+  edge: number,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+): [-1 | 0 | 1, -1 | 0 | 1] {
+  if (x <= edge * 2 && y <= edge * 2) {
+    return [1, 1];
+  } else if (x >= w - edge * 2 && y <= edge * 2) {
+    return [-1, 1];
+  } else if (x <= edge * 2 && y >= h - edge * 2) {
+    return [1, -1];
+  } else if (x >= w - edge * 2 && y >= h - edge * 2) {
+    return [-1, -1];
+  } else if (x <= edge) {
+    return [1, 0];
+  } else if (x >= w - edge) {
+    return [-1, 0];
+  } else if (y <= edge) {
+    return [0, 1];
+  } else if (y >= h - edge) {
+    return [0, -1];
+  } else {
+    return [0, 0];
+  }
+}

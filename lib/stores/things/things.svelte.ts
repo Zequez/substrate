@@ -123,6 +123,10 @@ function typeOfThing<const T extends string, K>(
     return output;
   });
 
+  const outputThingsFlat = $derived.by(() => {
+    return Object.values(outputThings);
+  });
+
   $effect.root(() => {
     $effect(() => {
       [resolvedThings];
@@ -196,6 +200,9 @@ function typeOfThing<const T extends string, K>(
   return {
     get all() {
       return outputThings;
+    },
+    get allFlat() {
+      return outputThingsFlat;
     },
     get mine() {
       return mine;

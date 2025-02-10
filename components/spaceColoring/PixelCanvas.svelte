@@ -3,7 +3,7 @@
     type PixelsFlat,
     PALLETTE,
     encodeXY,
-  } from "../lib/stores/AgentColorPixels.svelte";
+  } from "../../lib/stores/spaceColoring.svelte";
   const {
     pixels,
     buffer,
@@ -25,13 +25,15 @@
   let el = $state<HTMLCanvasElement>();
   let ctx = $state<CanvasRenderingContext2D>(null!);
 
+  // $effect(() => {
+  //   console.log("PIXELS", pixels);
+  // });
+
   $effect(() => {
-    console.log("Setting context");
     ctx = el!.getContext("2d")!;
   });
 
   $effect(() => {
-    console.log("Setting width");
     el!.width = gc.w;
     el!.height = gc.h;
   });

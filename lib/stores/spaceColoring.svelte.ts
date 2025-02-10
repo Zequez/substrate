@@ -1,4 +1,3 @@
-import clients from "../../lib/clients";
 import thingsStore from "./things";
 
 export const PALLETTE = [
@@ -44,6 +43,7 @@ function createStore() {
       true
     )
   );
+  let currentColor = $state(1);
 
   let buffer = $state<PixelsMapTimestamped>({});
   let bufferFlat = $derived(toFlat(buffer));
@@ -69,9 +69,12 @@ function createStore() {
     return Object.entries(pxls).map(([k, v]) => [...decodeXY(k), v[0]]);
   }
 
-  function paint(x: number, y: number, color: number) {
+  function paint(x: number, y: number, color?: number) {
     const xy = encodeXY(x, y);
-    buffer[xy] = [color, Date.now()];
+    buffer[xy] = [
+      typeof color === "undefined" ? currentColor : color,
+      Date.now(),
+    ];
   }
 
   async function commit() {
@@ -100,6 +103,12 @@ function createStore() {
     },
     get buffer() {
       return bufferFlat;
+    },
+    setColor: (color: number) => {
+      currentColor = color;
+    },
+    get color() {
+      return currentColor;
     },
     paint,
     commit,
