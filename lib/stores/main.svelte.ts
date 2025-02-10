@@ -174,29 +174,40 @@ async function createStore() {
   function handleMouseDown(
     ev: MouseEvent,
     target:
-      | ["grid"]
+      | ["create-frame"]
+      | ["pan"]
+      | ["paint-start"]
       | ["frame-picker", string[]]
       | ["frame-resize", BoxResizeHandles, string]
       | ["copy-link", string]
       | ["remove-asset", string]
       | ["fit-all"]
       | ["toggle-fullscreen"]
-      | ["paint-start"]
   ) {
     ev.stopPropagation();
     switch (target[0]) {
-      case "grid": {
-        if (ev.button === 1) {
-          mouseDown = { type: "pan" };
-        } else if (ev.button === 0) {
-          mouseDown = {
-            type: "createFrame",
-            box: ui.mouse.box,
-            boxNormalized: ui.mouse.box,
-            isValid: boxIsValid(ui.mouse.box),
-            touchingFrames: [],
-          };
-        }
+      case "pan": {
+        mouseDown = { type: "pan" };
+        break;
+      }
+      case "create-frame": {
+        mouseDown = {
+          type: "createFrame",
+          box: ui.mouse.box,
+          boxNormalized: ui.mouse.box,
+          isValid: boxIsValid(ui.mouse.box),
+          touchingFrames: [],
+        };
+        break;
+      }
+      case "paint-start": {
+        const [x, y] = ui.mouseToGridPos(ev.clientX, ev.clientY);
+        mouseDown = {
+          type: "painting",
+          lastX: x,
+          lastY: y,
+        };
+        colorPixels.paint(x, y);
         break;
       }
       case "copy-link": {
@@ -269,17 +280,6 @@ async function createStore() {
           appEl.requestFullscreen();
         }
         break;
-      }
-      case "paint-start": {
-        if (ev.button === 2) {
-          const [x, y] = ui.mouseToGridPos(ev.clientX, ev.clientY);
-          mouseDown = {
-            type: "painting",
-            lastX: x,
-            lastY: y,
-          };
-          colorPixels.paint(x, y);
-        }
       }
     }
   }

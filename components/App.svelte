@@ -15,6 +15,7 @@
   import TrashBin from "./TrashBin.svelte";
   import Profiles from "./Profiles.svelte";
   import { c, stickyStyle } from "../lib/utils";
+  import { tooltip } from "../lib/tooltip";
   // import GenericDnaSandbox from "./GenericDnaSandbox.svelte";
 
   const S = SS.store;
@@ -69,13 +70,14 @@
     <button
       class="px2 py1 bg-white rounded-md text-xs hover:bg-gray-100"
       onclick={S.ev.resetZoom}
+      use:tooltip={"Reset zoom"}
     >
       {Math.round(S.pos.z * 100)}%
     </button>
   {/if}
   {#if Object.keys(S.frames).length}
     <button
-      title="Fit all frames on the viewport"
+      use:tooltip={"Fit all frames on the viewport"}
       class="bg-white px2 py1 rounded-md text-xs hover:bg-gray-100"
       onclick={(ev) => S.ev.mousedown(ev, ["fit-all"])}
     >
@@ -83,7 +85,7 @@
     </button>
   {/if}
   <button
-    title="Enter full screen mode"
+    use:tooltip={"Enter fullscreen mode"}
     class="bg-white px2 py1 rounded-md text-xs hover:bg-gray-100"
     onclick={(ev) => S.ev.mousedown(ev, ["toggle-fullscreen"])}
     >{#if S.isInFullscreen}<CompressIcon />{:else}<ExpandIcon />{/if}</button
@@ -96,7 +98,15 @@
   onmouseup={S.ev.mouseup}
   onmousemove={S.ev.mousemove}
   onwheel={S.ev.wheel}
-  onmousedown={(ev) => S.ev.mousedown(ev, ["paint-start"])}
+  onmousedown={(ev) =>
+    S.ev.mousedown(
+      ev,
+      ev.button === 0
+        ? ["create-frame"]
+        : ev.button === 1
+          ? ["pan"]
+          : ["paint-start"]
+    )}
   oncontextmenu={(ev) => ev.preventDefault()}
   role="presentation"
   class={cx("absolute inset-0 overflow-hidden", {
@@ -107,8 +117,7 @@
 
   <!-- GRID PATTERN -->
   <canvas
-    onmousedown={(ev) => S.ev.mousedown(ev, ["grid"])}
-    class="h-full w-full absolute top-0 left-0 z-10"
+    class="h-full w-full absolute top-0 left-0 z-10 pointer-events-none"
     bind:this={S.grid.el}
   ></canvas>
 
@@ -219,7 +228,9 @@
         <GhostBox box={validBox} lighter={false} />
       {/if}
 
-      <FrameInteracting {frame} {uuid} {boxStyle} />
+      {#if !moving}
+        <FrameInteracting {frame} {uuid} {boxStyle} />
+      {/if}
     {/each}
   </div>
 </div>
