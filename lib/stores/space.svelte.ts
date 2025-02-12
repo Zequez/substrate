@@ -268,7 +268,7 @@ function spaceStore(config: { centerAt: Box | null }) {
       },
       setZoom,
       setZoomFromWheel: (ev: WheelEvent) => {
-        setZoom(zoom + ev.deltaY * zoomStep, ev.clientX, ev.clientY);
+        setZoom(zoom - ev.deltaY * zoomStep, ev.clientX, ev.clientY);
       },
     },
     mouse: {
