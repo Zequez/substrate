@@ -60,6 +60,7 @@ async function createStore() {
     ui.mouse.pan(x * ui.grid.size * 1.5, y * ui.grid.size * 1.5);
   });
   let isOnGrid = $state(false);
+  let keyShift = $state(false);
 
   // Coloring pixels stuff
   let colorPixels = spaceColoring.createStore();
@@ -90,6 +91,18 @@ async function createStore() {
 
     appEl.addEventListener("fullscreenchange", (ev) => {
       isInFullscreen = !!document.fullscreenElement;
+    });
+
+    window.addEventListener("keydown", (ev) => {
+      if (ev.code === "ShiftLeft" || ev.code === "ShiftRight") {
+        keyShift = true;
+      }
+    });
+
+    window.addEventListener("keyup", (ev) => {
+      if (ev.code === "ShiftLeft" || ev.code === "ShiftRight") {
+        keyShift = false;
+      }
     });
 
     let timeoutId: any = null;
@@ -555,6 +568,9 @@ async function createStore() {
     pos: ui.pos,
     grid: ui.grid,
     mouse: ui.mouse,
+    get keyShift() {
+      return keyShift;
+    },
     resolveFrameBox,
     get currentAction() {
       return mouseDown;

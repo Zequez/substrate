@@ -22,6 +22,8 @@
   function handleLoadIframe() {
     loaded = true;
   }
+
+  const controlMode = $derived(S.keyShift || S.pos.z <= 0.5);
 </script>
 
 {#if frame.assetUrl}
@@ -29,19 +31,19 @@
     {@const isSubstrateAsset = hashEq(asset.wal.hrl[0], clients.dnaHash)}
     {#if isSubstrateAsset && clients.wal}
       Substrate embed; preventing recursion
-    {:else if S.pos.z > 0.5 || loaded}
+    {:else if !controlMode || loaded}
       <iframe
         title="Asset"
         class={cx("absolute top-0 z-30 left-0 h-full w-full rounded-md", {
           "pointer-events-none": S.currentAction.type !== "none",
-          hidden: S.pos.z <= 0.5,
+          hidden: controlMode,
         })}
         src={asset.iframeSrc}
         onload={handleLoadIframe}
       ></iframe>
     {/if}
 
-    {#if S.pos.z <= 0.5}
+    {#if controlMode}
       <div
         class="absolute overflow-hidden p-[10%] top-0 z-30 left-0 h-full size-full flexcc opacity-75"
       >
@@ -63,7 +65,7 @@
   {:else}
     Loading...
   {/if}
-{:else if S.pos.z > 0.5}
+{:else if !controlMode}
   <div class="p4">
     <div>
       <input
@@ -79,7 +81,7 @@
   </div>
 {/if}
 
-{#if S.pos.z <= 0.5}
+{#if controlMode}
   {@const size = (1 * 1) / S.pos.z}
   {@const asset = frame.assetUrl ? assets.V(frame.assetUrl) : null}
 
