@@ -22,18 +22,6 @@
       >
         <CircleMinusIcon />
       </button>
-      <!-- <div
-                class="absolute top-1/2 -translate-y-1/2 left-10 z-10 bg-black/20 b b-black/10 flexcs -ml2 rounded-r-md"
-              >
-                <div class="w6 h6 p1 ml2">
-                  <img
-                    alt="Asset icon"
-                    src={asset.info.icon_src}
-                    class="w-full w-full pointer-events-none"
-                  />
-                </div>
-                <span class="text-sm mr1">{asset.info.name}</span>
-              </div> -->
     </div>
   {:else}
     <div></div>
@@ -47,12 +35,7 @@
     <LinkIcon />
   </button>
 {/if}
-<button
-  class="h-10 w-10 px2 flexcc text-black/60 bg-white cursor-move rounded-full"
-  onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", [uuid]])}
->
-  <MoveIcon class="size-full" />
-</button>
+
 <button
   class="h-10 w-10 px3 flexcc text-black/60 bg-white hover:text-cyan-500 rounded-full"
   aria-label="Copy link to iframe"

@@ -157,7 +157,6 @@
       {@const transformOriginStyle = moving
         ? `transform-origin: ${A.pickX * 100}% ${A.pickY * 100}%`
         : ""}
-      {@const borderRadius = (1 / S.pos.z) * (S.pos.z > 0.2 ? 6 : 4)}
 
       <!-- Shadow only element z-30 => So shadows don't overlap over other frames -->
       <div
@@ -181,7 +180,7 @@
                 moving && !trashing,
             },
           ]}
-          style={`border-radius: ${borderRadius}px`}
+          style={S.ui.boxBorderRadius}
         ></div>
       </div>
 
@@ -200,7 +199,7 @@
         style={boxStyle}
       >
         <div
-          style={`border-radius: ${borderRadius}px`}
+          style={S.ui.boxBorderRadius}
           use:stickyStyle={transformOriginStyle}
           use:c={[
             "size-full",
@@ -218,7 +217,7 @@
               onmousedown={(ev) =>
                 S.ev.mousedown(ev, ["frame-picker", S.framesSelected])}
               class="size-full bg-blue-500/50 absolute z-150 cursor-move"
-              style={`border-radius: ${borderRadius}px`}
+              style={S.ui.boxBorderRadius}
             ></button>
           {/if}
           <FrameContent {frame} {uuid} />

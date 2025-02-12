@@ -1,31 +1,30 @@
 <script lang="ts">
+  import { type Component } from "svelte";
+  import type { SvelteHTMLElements } from "svelte/elements";
   import MoveIcon from "~icons/fa6-solid/arrows-up-down-left-right";
+  import ClipboardIcon from "~icons/fa6-solid/clipboard";
+  import CircleMinusIcon from "~icons/fa6-solid/circle-minus";
+  import LinkIcon from "~icons/fa6-solid/link";
   import cx from "classnames";
   import { type BoxedFrame } from "../lib/Frame";
   import assets from "../lib/stores/assets.svelte";
   import clients from "../lib/clients";
   import { hashEq } from "../lib/utils";
   import SS from "../lib/stores/main.svelte";
+  import { tooltip } from "../lib/tooltip";
 
-  let p: { uuid: string; frame: BoxedFrame } = $props();
+  let { uuid, frame }: { uuid: string; frame: BoxedFrame } = $props();
   const S = SS.store;
 
-  const asset = $derived(p.frame.assetUrl ? assets.V(p.frame.assetUrl) : null);
+  const asset = $derived(frame.assetUrl ? assets.V(frame.assetUrl) : null);
 
   let loaded = $state(false);
   function handleLoadIframe() {
     loaded = true;
   }
-
-  const minDimension = $derived(Math.min(p.frame.box.w, p.frame.box.h));
-  const frameIconPadding = $derived(
-    S.grid.size *
-      S.pos.z *
-      (minDimension <= 4 ? (minDimension <= 2 ? 1 : 2) : 4)
-  );
 </script>
 
-{#if p.frame.assetUrl}
+{#if frame.assetUrl}
   {#if asset}
     {@const isSubstrateAsset = hashEq(asset.wal.hrl[0], clients.dnaHash)}
     {#if isSubstrateAsset && clients.wal}
@@ -44,14 +43,21 @@
 
     {#if S.pos.z <= 0.5}
       <div
-        style={`padding: ${frameIconPadding}px`}
-        class="absolute top-0 z-30 left-0 h-full size-full flexcc opacity-75"
+        class="absolute overflow-hidden p-[10%] top-0 z-30 left-0 h-full size-full flexcc opacity-75"
       >
-        <img
-          src={asset.info.icon_src}
-          alt={asset.info.name}
-          class="max-w-full max-h-full"
-        />
+        <div class="flexcc flex-wrap">
+          <img
+            src={asset.info.icon_src}
+            alt={asset.info.name}
+            style={`width: ${2 / S.pos.z}rem; height: ${2 / S.pos.z}rem`}
+          />
+          <div
+            class="text-center"
+            style={`font-size: ${1 / S.pos.z}rem; margin: 0 ${0.25 / S.pos.z}rem`}
+          >
+            {asset.info.name}
+          </div>
+        </div>
       </div>
     {/if}
   {:else}
@@ -63,7 +69,7 @@
       <input
         class="bg-white text-black/80 rounded-md b b-black/10 px2 py1 w-full"
         type="text"
-        onclick={(ev) => S.ev.click(ev, ["pick-asset", p.uuid])}
+        onclick={(ev) => S.ev.click(ev, ["pick-asset", uuid])}
         placeholder="Search, or enter URL"
       />
       <!-- <button class="bg-green-500 text-white rounded-full p2"
@@ -74,10 +80,56 @@
 {/if}
 
 {#if S.pos.z <= 0.5}
+  {@const size = (1 * 1) / S.pos.z}
+  {@const asset = frame.assetUrl ? assets.V(frame.assetUrl) : null}
+
+  {#snippet menuButton(
+    Icon: Component<SvelteHTMLElements["svg"]>,
+    tooltipText: string,
+    onClick: (ev: MouseEvent) => void,
+    klass: string
+  )}
+    <button
+      style={`width: ${size}rem; margin-left: ${size / 10}rem`}
+      use:tooltip={tooltipText}
+      class="h-full p-[8%] bg-black/80 hover:bg-black/100 rounded-full flexcc relative z-20 flexcc text-white/80 {klass}"
+      onclick={onClick}
+    >
+      <Icon class="size-full" />
+    </button>
+  {/snippet}
+
+  <div
+    style={`${S.ui.boxBorderRadius}; height: ${size}rem; top: ${size / 10}rem; right: ${size / 10}rem;`}
+    class="absolute z-110 flexcc"
+  >
+    {#if frame.assetUrl}
+      {@render menuButton(
+        CircleMinusIcon,
+        "Unlink asset",
+        (ev) => S.ev.mousedown(ev, ["remove-asset", uuid]),
+        "hover:text-red-500"
+      )}
+    {:else}
+      {@render menuButton(
+        LinkIcon,
+        "Pick asset",
+        (ev) => S.ev.click(ev, ["pick-asset", uuid]),
+        "hover:text-cyan-500"
+      )}
+    {/if}
+    {@render menuButton(
+      ClipboardIcon,
+      "Copy link & add to pocket",
+      (ev) => S.ev.mousedown(ev, ["copy-link", uuid]),
+      "hover:text-cyan-500"
+    )}
+
+    <!-- <FrameMenu uuid={p.uuid} frame={frame} /> -->
+  </div>
   <button
-    style={`padding: ${frameIconPadding}px`}
-    class="size-full z-100 absolute top-0 left-0 cursor-move flexcc text-black/25"
-    onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", [p.uuid]])}
+    class="size-full p-[10%] z-100 absolute top-0 left-0 cursor-move flexcc text-black/25"
+    onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", [uuid]])}
   >
     {#if !asset}
       <MoveIcon class="size-full max-w-full max-h-full" />

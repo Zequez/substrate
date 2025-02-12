@@ -477,7 +477,7 @@ async function createStore() {
   // UTILS
 
   function boxIsValid(box: Box, excludeUuids: string[] = []) {
-    if (box.w * box.h < 4 || box.w < 2 || box.h < 2) return false;
+    if (box.w < 4 || box.h < 4) return false;
     const testAgainstFrames = framesInViewport.filter(
       (f) => excludeUuids.indexOf(f.uuid) === -1
     );

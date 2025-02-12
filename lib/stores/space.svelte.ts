@@ -204,12 +204,17 @@ function spaceStore(config: { centerAt: Box | null }) {
     `;
   }
 
+  const borderRadius = $derived((1 / zoom) * (zoom > 0.2 ? 6 : 4));
+
   return {
     mountInit,
     setMinZoomToFitBox,
     panZoomToFit,
     transform,
     boxStyle,
+    get boxBorderRadius() {
+      return `border-radius: ${borderRadius}px`;
+    },
     get width() {
       return width;
     },
