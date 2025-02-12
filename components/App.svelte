@@ -95,6 +95,7 @@
 <!-- ZOOMABLE PANABLE CANVAS -->
 
 <div
+  bind:this={S.containerEl}
   onmouseup={S.ev.mouseup}
   onmousemove={S.ev.mousemove}
   onwheel={S.ev.wheel}

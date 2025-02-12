@@ -29,6 +29,7 @@ export type BoxResizeHandles =
 
 async function createStore() {
   const appEl = document.getElementById("app")!;
+  let canvasContainerEl = $state<HTMLDivElement>(null!);
 
   // Frame stuff
   let frames = $state(
@@ -291,7 +292,7 @@ async function createStore() {
   function handleMouseMove(ev: MouseEvent, target?: ["trash"]) {
     ui.mouse.setXY(ev.clientX, ev.clientY);
 
-    isOnGrid = ev.target === ui.grid.el;
+    isOnGrid = ev.target === canvasContainerEl;
 
     switch (mouseDown.type) {
       case "pan":
@@ -534,6 +535,12 @@ async function createStore() {
 
   return {
     mountInit,
+    get containerEl() {
+      return canvasContainerEl;
+    },
+    set containerEl(v: HTMLDivElement) {
+      canvasContainerEl = v;
+    },
     ev: {
       click: handleClick,
       mousedown: handleMouseDown,
