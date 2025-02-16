@@ -200,7 +200,8 @@
       <button
         aria-label="Pick up selected area"
         style={S.ui.boxStyle(resultingBox) + S.ui.boxBorderRadius}
-        onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", null])}
+        onmousedown={(ev) =>
+          ev.button === 0 ? S.ev.mousedown(ev, ["frame-picker", null]) : null}
         class={cx(
           "z-selection-box b-2 absolute top-0 left-0 cursor-move",
           "bg-sky-500/10 b-sky-500/60"
