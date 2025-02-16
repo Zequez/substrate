@@ -25,30 +25,6 @@
   }
 
   const controlMode = $derived(S.keyShift || S.pos.z <= 0.5);
-  let frameEl = $state<HTMLIFrameElement | null>(null);
-  let frameContainerEl = $state<HTMLDivElement | null>(null);
-  let fullscreenEl = document.getElementById("fullscreen");
-
-  $effect(() => {
-    // console.log("FRAME ELEMENT?", frameEl);
-    // if (!frameEl) return;
-    // if (
-    //   S.expandedFrame === uuid &&
-    //   frameEl.parentElement === frameContainerEl
-    // ) {
-    //   fullscreenEl!.append(frameEl);
-    // } else if (
-    //   S.expandedFrame !== uuid &&
-    //   frameEl.parentElement !== frameContainerEl
-    // ) {
-    //   frameContainerEl!.append(frameEl);
-    // }
-    // if (S.expandedFrame === uuid && frameEl) {
-    //   fullscreenEl
-    //   // const { left, top } = frameEl.getBoundingClientRect();
-    //   // leftTop = [left, top];
-    // }
-  });
 </script>
 
 {#if frame.assetUrl}
@@ -59,7 +35,6 @@
     {:else if !controlMode || loaded}
       <iframe
         title="Asset"
-        bind:this={frameEl}
         class={cx("absolute top-0 z-30 left-0 h-full w-full rounded-md", {
           "pointer-events-none": S.currentAction.type !== "none",
           hidden: controlMode && S.expandedFrame !== uuid,

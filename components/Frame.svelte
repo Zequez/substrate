@@ -16,20 +16,21 @@
   const frame = $derived(wrappedFrame.value);
 
   const [box, validBox] = $derived(S.resolveFrameBox(uuid, frame));
-  const resizing = $derived(A.type === "resizeFrame" && A.uuid === uuid);
-  const moving = $derived(
+
+  const isResizing = $derived(A.type === "resizeFrame" && A.uuid === uuid);
+  const isMoving = $derived(
     A.type === "moveFrame" && A.uuids.indexOf(uuid) !== -1
   );
-  const trashing = $derived(
+  const isTrashing = $derived(
     A.type === "moveFrame" && A.uuids.indexOf(uuid) !== -1 && A.trashing
   );
   const isExpanded = $derived(S.expandedFrame === uuid);
-
   const isBeingSelected = $derived(
     A.type === "createFrame"
       ? A.touchingFrames.indexOf(uuid) !== -1
       : S.framesSelected.indexOf(uuid) !== -1
   );
+  const isLastInteracted = $derived(S.lastInteractionUuid === uuid);
 
   const boxStyle = $derived(S.ui.boxStyle(box));
   const transformOriginStyle = $derived(
@@ -49,19 +50,26 @@
       wasExpanded = true;
     }
   });
+
+  function frameZ() {
+    if (isExpanded) return "z-expanded-frame";
+    else if (isLastInteracted) return "z-focused-frame";
+    else if (isMoving) return "z-moving-frame";
+    else return "z-frame";
+  }
 </script>
 
 <!-- Frame is not contained within a single element,
  but is made of of multiple layers on the same shared scope of other frames -->
 <!-- This allow us, for example to have a z-index for shadows that is below all frames -->
 
-<!-- Shadow frame element z-30 -->
+<!-- Shadow frame element -->
 <div
   class={cx("absolute top-0 left-0", {
-    "z-30": !moving,
+    "z-frame-shadow": !isMoving,
     "duration-150 transition-property-[transform,width,height]":
-      !moving && !resizing && !wasExpanded && !isExpanded,
-    "z-50 transition-none": moving,
+      !isMoving && !isResizing && !wasExpanded && !isExpanded,
+    "z-moving-frame-shadow transition-none": isMoving,
   })}
   style={isExpanded ? "" : boxStyle}
 >
@@ -71,10 +79,10 @@
       "size-full",
       "duration-150 transition-property-[transform,opacity,box-shadow]",
       {
-        "scale-50": trashing,
-        "shadow-[0px_0px_2px_3px_#0003] scale-100": !moving,
+        "scale-50": isTrashing,
+        "shadow-[0px_0px_2px_3px_#0003] scale-100": !isMoving,
         "shadow-[0px_0px_2px_3px_#0002,0px_0px_10px_3px_#0005] scale-102":
-          moving && !trashing,
+          isMoving && !isTrashing,
       },
     ]}
     style={S.ui.boxBorderRadius}
@@ -85,13 +93,11 @@
 <div
   use:c={[
     "absolute top-0 left-0",
+    frameZ(),
     {
-      "z-40": !moving,
       "duration-150 transition-property-[transform,width,height]":
-        !moving && !resizing && !wasExpanded && !isExpanded,
-      "z-60": moving,
-      "z-80": S.lastInteractionUuid === uuid,
-      "fixed! inset-0! z-150!": isExpanded,
+        !isMoving && !isResizing && !wasExpanded && !isExpanded,
+      "fixed! inset-0!": isExpanded,
     },
   ]}
   style={isExpanded ? "" : boxStyle}
@@ -105,8 +111,8 @@
       "duration-150 transition-transform",
       "bg-gray-100 b-gray-300 shadow-[inset_0px_0px_1px_0px_#0003]",
       {
-        "scale-50 opacity-30": trashing,
-        "scale-102 opacity-100": moving && !trashing,
+        "scale-50 opacity-30": isTrashing,
+        "scale-102 opacity-100": isMoving && !isTrashing,
       },
     ]}
   >
@@ -127,6 +133,6 @@
   <GhostBox box={validBox} lighter={false} />
 {/if}
 
-{#if !moving && !isExpanded}
+{#if !isMoving && !isExpanded}
   <FrameInteracting {frame} {uuid} {boxStyle} />
 {/if}

@@ -12,7 +12,7 @@
 <div
   style={boxStyle}
   class={cx(
-    "z-30 b-2 absolute top-0 left-0 rounded-md bg-sky-500/10 b-sky-500/60 pointer-events-none",
+    "z-ghostbox b-2 absolute top-0 left-0 rounded-md bg-sky-500/10 b-sky-500/60 pointer-events-none",
     {
       "bg-sky-500/10 b-sky-500/60": lighter,
       "bg-sky-500/50 b-sky-500/100": !lighter,

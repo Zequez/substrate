@@ -16,6 +16,7 @@
   import Profiles from "./Profiles.svelte";
   import { tooltip } from "../lib/tooltip";
   import Frame from "./Frame.svelte";
+  import clients from "../lib/clients";
   // import GenericDnaSandbox from "./GenericDnaSandbox.svelte";
 
   const S = SS.store;
@@ -85,7 +86,7 @@
   </button>
 {/snippet}
 
-<div class="absolute bottom-2 right-2 z-150 flex space-x-2">
+<div class="absolute bottom-2 right-2 z-hud flex space-x-2">
   {#if !S.expandedFrame}
     {#if S.pos.z !== 1}
       {@render cornerButton(
@@ -102,11 +103,13 @@
       )}
     {/if}
   {/if}
-  {@render cornerButton(
-    S.isInFullscreen ? CompressIcon : ExpandIcon,
-    "Enter fullscreen mode",
-    (ev) => S.ev.mousedown(ev, ["toggle-fullscreen"])
-  )}
+  {#if !clients.weave}
+    {@render cornerButton(
+      S.isInFullscreen ? CompressIcon : ExpandIcon,
+      "Enter fullscreen mode",
+      (ev) => S.ev.mousedown(ev, ["toggle-fullscreen"])
+    )}
+  {/if}
 
   {#if S.expandedFrame}
     {@render cornerButton(CompressIcon, "Exit expanded frame", (ev) =>
@@ -117,6 +120,7 @@
 
 <!-- ZOOMABLE PANABLE CANVAS -->
 
+<!-- Note: Not transformed and z-index is unset -->
 <div
   bind:this={S.containerEl}
   onmouseup={S.ev.mouseup}
@@ -141,14 +145,14 @@
 
   <!-- GRID PATTERN -->
   <canvas
-    class="h-full w-full absolute top-0 left-0 z-10 pointer-events-none"
+    class="h-full w-full absolute top-0 left-0 z-grid pointer-events-none"
     bind:this={S.grid.el}
   ></canvas>
 
   <!-- This centers the grid so that 0,0 is in the middle of the screen -->
   <div
-    class={cx("absolute top-0 left-0 z-40", {
-      "z-120!": S.expandedFrame,
+    class={cx("absolute top-0 left-0", {
+      "z-frames-container": !S.expandedFrame,
     })}
     style={S.expandedFrame ? "" : S.ui.transform()}
   >
