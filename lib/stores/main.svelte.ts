@@ -123,6 +123,11 @@ async function createStore() {
         framesSelected = [];
         selectedArea = null;
       }
+      if (ev.code === "Escape" && selectedArea !== null) {
+        pixelsSelected = [];
+        framesSelected = [];
+        selectedArea = null;
+      }
     });
 
     window.addEventListener("keyup", (ev) => {
