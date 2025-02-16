@@ -1,5 +1,6 @@
 import "@unocss/reset/tailwind.css";
 import "virtual:uno.css";
+import "./zLayers.css";
 import "svooltip/styles.css";
 import { mount } from "svelte";
 import icon2 from "./icon2.svg";

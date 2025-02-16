@@ -10,7 +10,7 @@ import GDNA from "./gdna.svelte";
 import clients from "../../clients";
 // import SYN from "./syn.svelte";
 
-type ThingWrapped<T extends string, K> = {
+export type ThingWrapped<T extends string, K> = {
   type: T;
   value: K;
   uuid: string;

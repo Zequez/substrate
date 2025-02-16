@@ -8,7 +8,7 @@ import {
 } from "../Frame";
 
 // Sub-states
-import thingsStore from "./things";
+import thingsStore, { type ThingWrapped } from "./things";
 import assets from "./assets.svelte";
 import profiles from "./profiles.svelte";
 import clients from "../clients";
@@ -27,6 +27,8 @@ export type BoxResizeHandles =
   | "tl"
   | "bl";
 
+export type BoxedFrameWrapped = ThingWrapped<"BoxedFrame", BoxedFrame>;
+
 async function createStore() {
   const appEl = document.getElementById("app")!;
   let canvasContainerEl = $state<HTMLDivElement>(null!);
@@ -42,6 +44,7 @@ async function createStore() {
   const frameHash = clients.wal ? clients.wal.hrl[1] : null;
   const frame = frameHash ? frames.findByHash(frameHash) : null;
   let framesSelected = $state<string[]>([]);
+  let expandedFrameUuid = $state<string | null>(null);
 
   const fitAllBox = $derived(
     containingBox(frames.allFlat.map((f) => f.value.box))
@@ -197,6 +200,7 @@ async function createStore() {
       | ["remove-asset", string]
       | ["fit-all"]
       | ["toggle-fullscreen"]
+      | ["expand-frame", string | null]
   ) {
     ev.stopPropagation();
     switch (target[0]) {
@@ -293,6 +297,10 @@ async function createStore() {
         } else {
           appEl.requestFullscreen();
         }
+        break;
+      }
+      case "expand-frame": {
+        expandedFrameUuid = target[1];
         break;
       }
     }
@@ -572,6 +580,9 @@ async function createStore() {
       return keyShift;
     },
     resolveFrameBox,
+    get expandedFrame() {
+      return expandedFrameUuid;
+    },
     get currentAction() {
       return mouseDown;
     },

@@ -1,0 +1,9 @@
+.z-tooltips { z-index: 130; }
+.z-expanded-frame-hud { z-index: 130; }
+.z-expanded-frame { z-index: 120; }
+.z-hud { z-index: 80; }
+.z-frame-resize-handles { z-index: 70; }
+.z-moving-frame { z-index: 62; }
+.z-moving-frame-shadow { z-index: 61; }
+.z-frame { z-index: 60; }
+.z-frame-shadow { z-index: 50; }
