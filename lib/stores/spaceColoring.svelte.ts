@@ -1,4 +1,5 @@
 import thingsStore from "./things";
+import { type Box } from "../Frame";
 
 export const PALLETTE = [
   null,
@@ -21,6 +22,7 @@ export const PALLETTE = [
 
 // x, y, color
 export type PixelsFlat = [number, number, number];
+export type Pixel = [number, number];
 
 type PixelsMapTimestamped = {
   [key: string]: [number, number];
@@ -30,9 +32,39 @@ export function encodeXY(x: number, y: number) {
   return `${x},${y}`;
 }
 
-function decodeXY(xy: string): [number, number] {
+export function decodeXY(xy: string): [number, number] {
   const [x, y] = xy.split(",");
   return [Number(x), Number(y)];
+}
+
+export function isWithinBox(x: number, y: number, box: Box) {
+  return (
+    x >= box.x && x <= box.x + box.w - 1 && y >= box.y && y <= box.y + box.h - 1
+  );
+}
+
+export function filterByBox(pixels: PixelsFlat[], box: Box): PixelsFlat[] {
+  return pixels.filter((p) => isWithinBox(p[0], p[1], box));
+}
+
+export function addDelta(
+  pixels: PixelsFlat[],
+  delta: { x: number; y: number }
+): PixelsFlat[] {
+  return pixels.map((p) => [p[0] + delta.x, p[1] + delta.y, p[2]]);
+}
+
+export function removePixels(
+  pixels: PixelsFlat[],
+  pixelsToRemove: PixelsFlat[]
+) {
+  return pixels.filter((p) => {
+    return !pixelsToRemove.some((p2) => p[0] === p2[0] && p[1] === p2[1]);
+  });
+}
+
+export function addPixels(pixels: PixelsFlat[], pixelsToAdd: PixelsFlat[]) {
+  return removePixels(pixels, pixelsToAdd).concat(pixelsToAdd);
 }
 
 function createStore() {
@@ -62,7 +94,7 @@ function createStore() {
       },
       {} as PixelsMapTimestamped
     );
-    return toFlat(latest).filter((p) => p[2] !== null);
+    return toFlat(latest).filter((p) => p[2] !== 0);
   });
 
   function toFlat(pxls: PixelsMapTimestamped): PixelsFlat[] {

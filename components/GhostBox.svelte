@@ -10,7 +10,7 @@
 </script>
 
 <div
-  style={boxStyle}
+  style={boxStyle + S.ui.boxBorderRadius}
   class={cx(
     "z-ghostbox b-2 absolute top-0 left-0 rounded-md bg-sky-500/10 b-sky-500/60 pointer-events-none",
     {

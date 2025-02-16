@@ -26,7 +26,7 @@
   );
   const isExpanded = $derived(S.expandedFrame === uuid);
   const isBeingSelected = $derived(
-    A.type === "createFrame"
+    A.type === "selecting"
       ? A.touchingFrames.indexOf(uuid) !== -1
       : S.framesSelected.indexOf(uuid) !== -1
   );

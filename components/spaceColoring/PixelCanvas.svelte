@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { isWithinBox, type Box } from "../../lib/Frame";
   import {
+    type Pixel,
     type PixelsFlat,
     PALLETTE,
     encodeXY,
@@ -9,6 +11,7 @@
     buffer,
     pos: gc,
     gridSize,
+    selecting,
   }: {
     pixels: PixelsFlat[];
     buffer: PixelsFlat[];
@@ -20,6 +23,7 @@
       z: number;
     };
     gridSize: number;
+    selecting: PixelsFlat[] | null;
   } = $props();
 
   let el = $state<HTMLCanvasElement>();
@@ -38,6 +42,10 @@
     el!.height = gc.h;
   });
 
+  const selectedPixelsMatcher = $derived(
+    selecting ? selecting.map(([x, y]) => encodeXY(x, y)) : []
+  );
+
   function paintPixels(pxls: PixelsFlat[], clear: boolean) {
     const m = gc.z > 0.25 ? 2 : 0;
     if (ctx) {
@@ -52,12 +60,29 @@
         if (palletteColor) {
           ctx.fillStyle = palletteColor;
         }
-        ctx[func](
-          gc.x * pixelSize + x * pixelSize + gc.w / 2 + m / 2,
-          gc.y * pixelSize + y * pixelSize + gc.h / 2 + m / 2,
-          pixelSize - m,
-          pixelSize - m
-        );
+        const run = (f: any) => {
+          ctx[f as "fillRect"](
+            gc.x * pixelSize + x * pixelSize + gc.w / 2 + m / 2,
+            gc.y * pixelSize + y * pixelSize + gc.h / 2 + m / 2,
+            pixelSize - m,
+            pixelSize - m
+          );
+        };
+        run(func);
+
+        if (func === "fillRect") {
+          const selected =
+            selecting && palletteColor
+              ? selectedPixelsMatcher.indexOf(encodeXY(x, y)) !== -1
+              : false;
+          if (selected) {
+            ctx.fillStyle = "rgba(0, 0, 255, 0.50)";
+            // ctx.strokeStyle = "rgba(0, 0, 255, 0.9)";
+            // ctx.lineWidth = 2;
+            // ctx.strokeRect
+            run("fillRect");
+          }
+        }
       });
     }
   }

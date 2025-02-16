@@ -125,6 +125,10 @@ export function isTouching(box1: Box, box2: Box) {
   );
 }
 
+export function isWithinBox(x: number, y: number, box: Box) {
+  return x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h;
+}
+
 export function resizeBox(
   resizeHandle: BoxResizeHandles,
   box: Box,
@@ -183,4 +187,12 @@ export function resizeBox(
         w: Math.max(2, box.w - deltaX),
       };
   }
+}
+
+export function addDelta(box: Box, delta: { x: number; y: number }) {
+  return {
+    ...box,
+    x: box.x + delta.x,
+    y: box.y + delta.y,
+  };
 }

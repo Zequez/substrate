@@ -8,6 +8,11 @@
   import CompressIcon from "~icons/fa6-solid/compress";
 
   import SS from "../lib/stores/main.svelte";
+  import {
+    addDelta as addDeltaToPixels,
+    addPixels,
+    removePixels,
+  } from "../lib/stores/spaceColoring.svelte";
 
   import GhostBox from "./GhostBox.svelte";
   import PixelCanvas from "./spaceColoring/PixelCanvas.svelte";
@@ -17,6 +22,7 @@
   import { tooltip } from "../lib/tooltip";
   import Frame from "./Frame.svelte";
   import clients from "../lib/clients";
+  import { addDelta } from "../lib/Frame";
   // import GenericDnaSandbox from "./GenericDnaSandbox.svelte";
 
   const S = SS.store;
@@ -31,6 +37,22 @@
   });
 
   const A = $derived(S.currentAction);
+
+  const resolvedSelectingPixels = $derived(
+    A.type === "selecting"
+      ? A.touchingPixels
+      : A.type === "moveFrame"
+        ? addDeltaToPixels(S.pixelsSelected, A.lastValidBoxDelta)
+        : S.pixelsSelected
+  );
+  const resolvedPixels = $derived(
+    A.type === "moveFrame" && A.pixels.length !== 0
+      ? addPixels(
+          removePixels(S.pixelsInViewport, A.pixels),
+          resolvedSelectingPixels
+        )
+      : S.pixelsInViewport
+  );
 </script>
 
 <!-- <GenericDnaInspector /> -->
@@ -39,10 +61,11 @@
 <!-- PIXELS -->
 
 <PixelCanvas
-  pixels={S.pixelsInViewport}
+  pixels={resolvedPixels}
   buffer={S.spaceColoring.buffer}
   pos={S.pos}
   gridSize={S.grid.size}
+  selecting={resolvedSelectingPixels}
 />
 
 {#if !S.expandedFrame}
@@ -130,7 +153,7 @@
     S.ev.mousedown(
       ev,
       ev.button === 0
-        ? ["create-frame"]
+        ? ["selecting"]
         : ev.button === 1
           ? ["pan"]
           : ["paint-start"]
@@ -162,11 +185,27 @@
         <GhostBox box={S.mouse.box} lighter={true} />
       {/if}
       <!-- THE FRAME SHOWN WHILE DRAGGING FOR CREATION -->
-    {:else if S.currentAction.type === "createFrame"}
+    {/if}
+    {#if S.currentAction.type === "selecting"}
       <GhostBox
         box={S.currentAction.boxNormalized}
         lighter={!S.currentAction.isValid}
       />
+    {/if}
+    {#if S.selectedArea}
+      {@const resultingBox =
+        S.currentAction.type === "moveFrame"
+          ? addDelta(S.selectedArea, S.currentAction.boxDelta)
+          : S.selectedArea}
+      <button
+        aria-label="Pick up selected area"
+        style={S.ui.boxStyle(resultingBox) + S.ui.boxBorderRadius}
+        onmousedown={(ev) => S.ev.mousedown(ev, ["frame-picker", null])}
+        class={cx(
+          "z-selection-box b-2 absolute top-0 left-0 cursor-move",
+          "bg-sky-500/10 b-sky-500/60"
+        )}
+      ></button>
     {/if}
 
     <!-- ALL THE CREATED FRAMES -->

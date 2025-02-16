@@ -5,6 +5,7 @@ import {
   resizeBox,
   containingBox,
   isTouching,
+  addDelta,
 } from "../Frame";
 
 // Sub-states
@@ -14,7 +15,11 @@ import profiles from "./profiles.svelte";
 import clients from "../clients";
 import spaceStore from "./space.svelte";
 import keyboardStore from "./keyboard.svelte";
-import spaceColoring, { type PixelsFlat } from "./spaceColoring.svelte";
+import spaceColoring, {
+  filterByBox,
+  type Pixel,
+  type PixelsFlat,
+} from "./spaceColoring.svelte";
 import { bresenhamLine, resolveScreenEdgePanning } from "../../lib/utils";
 
 export type BoxResizeHandles =
@@ -44,6 +49,8 @@ async function createStore() {
   const frameHash = clients.wal ? clients.wal.hrl[1] : null;
   const frame = frameHash ? frames.findByHash(frameHash) : null;
   let framesSelected = $state<string[]>([]);
+  let pixelsSelected = $state<PixelsFlat[]>([]);
+  let selectedArea = $state<Box | null>(null);
   let expandedFrameUuid = $state<string | null>(null);
 
   const fitAllBox = $derived(
@@ -100,6 +107,22 @@ async function createStore() {
       if (ev.code === "ShiftLeft" || ev.code === "ShiftRight") {
         keyShift = true;
       }
+      if (ev.code === "Backspace" || ev.code === "Delete") {
+        if (pixelsSelected.length !== 0) {
+          for (let [x, y] of pixelsSelected) {
+            colorPixels.paint(x, y, 0);
+          }
+          colorPixels.commit();
+        }
+        if (framesSelected.length !== 0) {
+          for (let uuid of framesSelected) {
+            frames.remove(uuid);
+          }
+        }
+        pixelsSelected = [];
+        framesSelected = [];
+        selectedArea = null;
+      }
     });
 
     window.addEventListener("keyup", (ev) => {
@@ -152,15 +175,17 @@ async function createStore() {
     | { type: "none" }
     | { type: "pan" }
     | {
-        type: "createFrame";
+        type: "selecting";
         box: Box;
         boxNormalized: Box;
         isValid: boolean;
         touchingFrames: string[];
+        touchingPixels: PixelsFlat[];
       }
     | {
         type: "moveFrame";
         uuids: string[];
+        pixels: PixelsFlat[];
         startX: number;
         startY: number;
         boxDelta: { x: number; y: number };
@@ -191,16 +216,17 @@ async function createStore() {
   function handleMouseDown(
     ev: MouseEvent,
     target:
-      | ["create-frame"]
+      | ["selecting"]
       | ["pan"]
       | ["paint-start"]
-      | ["frame-picker", string[]]
+      | ["frame-picker", string[] | null]
       | ["frame-resize", BoxResizeHandles, string]
       | ["copy-link", string]
       | ["remove-asset", string]
       | ["fit-all"]
       | ["toggle-fullscreen"]
       | ["expand-frame", string | null]
+      | ["pick-selection"]
   ) {
     ev.stopPropagation();
     switch (target[0]) {
@@ -208,13 +234,17 @@ async function createStore() {
         mouseDown = { type: "pan" };
         break;
       }
-      case "create-frame": {
+      case "selecting": {
+        selectedArea = null;
+        pixelsSelected = [];
+        framesSelected = [];
         mouseDown = {
-          type: "createFrame",
+          type: "selecting",
           box: ui.mouse.box,
           boxNormalized: ui.mouse.box,
           isValid: boxIsValid(ui.mouse.box),
           touchingFrames: [],
+          touchingPixels: filterByBox(colorPixelsInViewport, ui.mouse.box),
         };
         break;
       }
@@ -250,7 +280,8 @@ async function createStore() {
 
         mouseDown = {
           type: "moveFrame",
-          uuids: target[1],
+          uuids: target[1] ? target[1] : framesSelected,
+          pixels: !target[1] ? pixelsSelected : [],
           startX,
           startY,
           pickX,
@@ -319,7 +350,7 @@ async function createStore() {
       case "pan":
         ui.mouse.pan(ev.movementX, ev.movementY);
         break;
-      case "createFrame": {
+      case "selecting": {
         // PIN the frame and allow it to expand with cursor movement
         // x & y stay static
         // w & h can get both positive and negative values
@@ -336,7 +367,12 @@ async function createStore() {
         const framesTouching = framesInViewportBeingTouched(
           mouseDown.boxNormalized
         ).map((f) => f.uuid);
+        const pixelsTouching = filterByBox(
+          colorPixelsInViewport,
+          mouseDown.boxNormalized
+        );
         mouseDown.touchingFrames = framesTouching;
+        mouseDown.touchingPixels = pixelsTouching;
         break;
       }
       case "moveFrame": {
@@ -407,8 +443,12 @@ async function createStore() {
 
   function handleMouseUp() {
     switch (mouseDown.type) {
-      case "createFrame": {
-        if (mouseDown.isValid) {
+      case "selecting": {
+        if (
+          mouseDown.isValid &&
+          mouseDown.touchingFrames.length === 0 &&
+          mouseDown.touchingPixels.length === 0
+        ) {
           const newFrame: BoxedFrame = {
             box: mouseDown.boxNormalized,
             assetUrl: "",
@@ -416,15 +456,34 @@ async function createStore() {
           };
           frames.create(newFrame);
         } else {
+          selectedArea =
+            mouseDown.touchingFrames.length === 0 &&
+            mouseDown.touchingPixels.length === 0
+              ? null
+              : mouseDown.boxNormalized;
           framesSelected = mouseDown.touchingFrames;
+          pixelsSelected = mouseDown.touchingPixels;
         }
         break;
       }
       case "moveFrame": {
-        for (let uuid of mouseDown.uuids) {
-          if (mouseDown.trashing) {
+        if (mouseDown.trashing) {
+          for (let uuid of mouseDown.uuids) {
             frames.remove(uuid);
-          } else {
+          }
+
+          if (pixelsSelected.length) {
+            for (let [x, y] of pixelsSelected) {
+              colorPixels.paint(x, y, 0);
+            }
+            colorPixels.commit();
+          }
+
+          selectedArea = null;
+          framesSelected = [];
+          pixelsSelected = [];
+        } else {
+          for (let uuid of mouseDown.uuids) {
             const frame = frames.all[uuid].value;
             frames.update(uuid, {
               box: {
@@ -434,8 +493,27 @@ async function createStore() {
               },
             });
           }
-        }
 
+          if (selectedArea) {
+            selectedArea = addDelta(selectedArea, mouseDown.lastValidBoxDelta);
+          }
+
+          if (pixelsSelected.length) {
+            const { x: dx, y: dy } = mouseDown.lastValidBoxDelta;
+            if (!(dx === 0 && dy === 0)) {
+              for (let [x, y, color] of pixelsSelected) {
+                colorPixels.paint(x, y, 0);
+                colorPixels.paint(x + dx, y + dy, color);
+              }
+              colorPixels.commit();
+            }
+            pixelsSelected = pixelsSelected.map(([x, y, c]) => [
+              x + dx,
+              y + dy,
+              c,
+            ]);
+          }
+        }
         break;
       }
       case "resizeFrame": {
@@ -513,22 +591,19 @@ async function createStore() {
     switch (mouseDown.type) {
       case "none":
       case "pan":
-      case "createFrame":
+      case "selecting":
       case "painting":
         return [frame.box, null];
       case "moveFrame": {
         if (mouseDown.uuids.indexOf(uuid) !== -1) {
-          const resolved = {
-            ...frame.box,
-            x: frame.box.x + mouseDown.boxDelta.x,
-            y: frame.box.y + mouseDown.boxDelta.y,
-          };
+          const resolved = addDelta(frame.box, mouseDown.boxDelta);
+
           if (!mouseDown.isValid) {
-            const resolvedValid = {
-              ...frame.box,
-              x: frame.box.x + mouseDown.lastValidBoxDelta.x,
-              y: frame.box.y + mouseDown.lastValidBoxDelta.y,
-            };
+            const resolvedValid = addDelta(
+              frame.box,
+              mouseDown.lastValidBoxDelta
+            );
+
             return [resolved, resolvedValid];
           } else {
             return [resolved, null];
@@ -612,6 +687,12 @@ async function createStore() {
     },
     get framesSelected() {
       return framesSelected;
+    },
+    get pixelsSelected() {
+      return pixelsSelected;
+    },
+    get selectedArea() {
+      return selectedArea;
     },
   };
 }
