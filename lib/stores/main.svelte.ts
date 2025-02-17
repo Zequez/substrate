@@ -59,6 +59,7 @@ async function createStore() {
   let pixelsSelected = $state<PixelsFlat[]>([]);
   let selectedArea = $state<Box | null>(null);
   let expandedFrameUuid = $state<string | null>(null);
+  let reverseZoomDirection = $state<boolean>(false);
 
   let tool = $state<{ main: ToolType; alt: ToolType }>({
     main: "select",
@@ -151,6 +152,10 @@ async function createStore() {
         tool.main = "frame";
       } else if (ev.code === "Digit3") {
         tool.main = "art";
+      }
+
+      if (ev.code === "KeyZ" && ev.shiftKey) {
+        reverseZoomDirection = !reverseZoomDirection;
       }
     });
 
@@ -671,7 +676,7 @@ async function createStore() {
 
   function handleWheel(ev: WheelEvent) {
     ev.preventDefault();
-    ui.pos.setZoomFromWheel(ev);
+    ui.pos.setZoomFromWheel(ev, reverseZoomDirection);
   }
 
   // UTILS
