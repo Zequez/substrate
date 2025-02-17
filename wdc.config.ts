@@ -1,9 +1,20 @@
 import { defineConfig } from "wdc";
 
 export default defineConfig({
-  version: "0.1.4",
+  version: "0.1.5",
   id: "substrate",
   changeLog: `
+# 0.1.5
+  - Added an Excalidraw-UX-inspired toolbar with hand, select, frame and art tools
+  - Secret hot-key Shift+Z to reverse zoom direction
+  - Remove cursor ghost frame
+  - Made frame controls less moving, tinier; for now
+  - Show asset name along with icon with far out zoom
+  - Pixels can now be selected, moved and trashed like frames
+  - You can delete selection with Backspace or Delete key
+  - Art tool has main and alt colors for left/right click
+  - Added configurable right-click-hotkeyed tool
+  - Added hand tool you can pick to pan with left click (and panning also linked to wheel click from any tool)
 # 0.1.4
   - Added WASD keyboard-based movement
   - You can now select frames and move them or trash them all together
