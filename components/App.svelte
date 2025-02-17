@@ -177,7 +177,7 @@
   </button>
 {/snippet}
 
-<div class="absolute bottom-2 right-2 z-hud flex space-x-2">
+<div class="absolute top-2 left-2 z-hud-zoom flex space-x-2">
   {#if !S.expandedFrame}
     {#if S.pos.z !== 1}
       {@render cornerButton(
@@ -247,10 +247,14 @@
     {/if} -->
     <!-- THE FRAME SHOWN WHILE DRAGGING FOR CREATION -->
     {#if S.currentAction.type === "selecting"}
-      <GhostBox
-        box={S.currentAction.boxNormalized}
-        lighter={!S.currentAction.isValid}
-      />
+      {#if S.currentAction.createFrame}
+        <GhostBox
+          box={S.currentAction.boxNormalized}
+          styl={S.currentAction.isValid ? "opaque" : "opaqueInvalid"}
+        />
+      {:else}
+        <GhostBox box={S.currentAction.boxNormalized} styl={"faded"} />
+      {/if}
     {/if}
     {#if S.selectedArea}
       {@const resultingBox =

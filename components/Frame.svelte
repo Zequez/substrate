@@ -104,7 +104,7 @@
 >
   <!-- The nested transformation here allows us to shrink the frame when trashing it -->
   <div
-    style={S.ui.boxBorderRadius}
+    style={isExpanded ? "" : S.ui.boxBorderRadius}
     use:stickyStyle={transformOriginStyle}
     use:c={[
       "size-full",
@@ -130,7 +130,7 @@
 </div>
 
 {#if validBox}
-  <GhostBox box={validBox} lighter={false} />
+  <GhostBox box={validBox} styl={"bright"} />
 {/if}
 
 {#if !isMoving && !isExpanded}

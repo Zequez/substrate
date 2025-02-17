@@ -17,6 +17,7 @@ import spaceStore from "./space.svelte";
 import keyboardStore from "./keyboard.svelte";
 import spaceColoring, {
   filterByBox,
+  minBoxForPixels,
   type Pixel,
   type PixelsFlat,
 } from "./spaceColoring.svelte";
@@ -549,10 +550,13 @@ async function createStore() {
           frames.create(newFrame);
         } else {
           selectedArea =
-            mouseDown.touchingFrames.length === 0 &&
             mouseDown.touchingPixels.length === 0
               ? null
-              : mouseDown.boxNormalized;
+              : minBoxForPixels(
+                  mouseDown.touchingPixels,
+                  mouseDown.boxNormalized
+                );
+
           framesSelected = mouseDown.touchingFrames;
           pixelsSelected = mouseDown.touchingPixels;
         }

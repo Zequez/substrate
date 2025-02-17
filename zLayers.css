@@ -1,9 +1,9 @@
 .z-tooltips { z-index: 130; }
+.z-hud-zoom {z-index: 85 }
 .z-hud { z-index: 80; }
-.z-profiles { z-index: 75; }
 
 .z-frames-container { z-index: 40; }
-  .z-expanded-frame { z-index: 76; }
+  .z-expanded-frame { z-index: 81; }
   .z-selection-box { z-index: 71; }
   .z-frame-resize-handles { z-index: 70; }
   .z-focused-frame { z-index: 63; }

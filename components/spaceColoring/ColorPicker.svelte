@@ -17,7 +17,7 @@
 </script>
 
 <div
-  class="absolute top-1/2 -translate-y-1/2 left-2 z-120 flex flex-col bg-white rounded-md b-1 b-black/10 shadow-md"
+  class="absolute top-1/2 -translate-y-1/2 left-2 z-hud flex flex-col bg-white rounded-md b-1 b-black/10 shadow-md"
 >
   {#each PALLETTE as pcolor, i}
     <button

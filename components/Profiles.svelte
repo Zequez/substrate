@@ -15,7 +15,7 @@
   });
 </script>
 
-<div class="absolute top-2 right-2 z-profiles flexcc space-x-2">
+<div class="absolute top-2 right-2 z-hud flexcc space-x-2">
   {#each sortedProfiles as [agent, profile]}
     {@const isSelf = agent === clients.agentKeyB64}
     {#if profile === "unknown" || profile === "none" || !profile.fields.avatar}

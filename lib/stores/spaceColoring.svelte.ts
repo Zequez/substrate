@@ -43,6 +43,22 @@ export function isWithinBox(x: number, y: number, box: Box) {
   );
 }
 
+// returns the smallest box that contains all pixels
+export function minBoxForPixels(pixels: PixelsFlat[], box: Box): Box {
+  return {
+    x: Math.min(...pixels.map((p) => p[0])),
+    y: Math.min(...pixels.map((p) => p[1])),
+    w:
+      Math.max(...pixels.map((p) => p[0])) -
+      Math.min(...pixels.map((p) => p[0])) +
+      1,
+    h:
+      Math.max(...pixels.map((p) => p[1])) -
+      Math.min(...pixels.map((p) => p[1])) +
+      1,
+  };
+}
+
 export function filterByBox(pixels: PixelsFlat[], box: Box): PixelsFlat[] {
   return pixels.filter((p) => isWithinBox(p[0], p[1], box));
 }
