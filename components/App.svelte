@@ -7,7 +7,20 @@
   import ExpandIcon from "~icons/fa6-solid/expand";
   import CompressIcon from "~icons/fa6-solid/compress";
 
-  import SS from "../lib/stores/main.svelte";
+  import HandToolClosedIcon from "~icons/fa6-solid/hand-back-fist";
+  import HandToolIcon from "~icons/fa6-solid/hand";
+  import SelectToolIcon from "~icons/fa6-solid/arrow-pointer";
+  import FrameToolIcon from "~icons/fa6-solid/window-maximize";
+  import ArtToolIcon from "~icons/fa6-solid/brush";
+  import FavIcon from "~icons/fa6-solid/star";
+
+  import SS, {
+    WHEEL_BUTTON,
+    ALT_BUTTON,
+    MAIN_BUTTON,
+    type ToolType,
+  } from "../lib/stores/main.svelte";
+  import { c } from "../lib/utils";
   import {
     addDelta as addDeltaToPixels,
     addPixels,
@@ -68,13 +81,68 @@
   selecting={resolvedSelectingPixels}
 />
 
-{#if !S.expandedFrame}
+{#if (!S.expandedFrame && S.tool.main === "art") || S.tool.alt === "art"}
   <!-- COLOR PICKER -->
   <ColorPicker
-    color={S.spaceColoring.color}
-    onPick={(ev, i) => S.ev.click(ev, ["set-pallette", i])}
+    mainColor={S.artToolSelectedColor.main}
+    onPickMain={(ev, i) => S.ev.click(ev, ["set-art-tool-color", "main", i])}
+    altColor={S.artToolSelectedColor.alt}
+    onPickAlt={(ev, i) => S.ev.click(ev, ["set-art-tool-color", "alt", i])}
   />
 {/if}
+
+<!-- TOOL BAR -->
+
+<div
+  class="z-hud p1 flex space-x-1 absolute top-2 left-1/2 -translate-x-1/2 h-10 rounded-md b b-black/10 shadow-md bg-gray-100"
+>
+  {#snippet toolButton(
+    Icon: Component<SvelteHTMLElements["svg"]>,
+    tooltipText: string,
+    hotkey: string | null,
+    tool: ToolType
+  )}
+    <button
+      title={`${tooltipText} tool ${hotkey ? `— ${hotkey}` : ""}`}
+      use:c={[
+        "w-8 h-full flexcc rounded-md p2 relative text-black/70 b",
+        {
+          "bg-green-200 b-black/10": S.tool.main === tool,
+          "bg-gray-200 b-black/0": S.tool.main !== tool,
+        },
+      ]}
+      oncontextmenu={(ev) => (
+        ev.preventDefault(), S.ev.click(ev, ["set-tool-alt", tool])
+      )}
+      onclick={(ev) =>
+        ev.button === MAIN_BUTTON
+          ? S.ev.click(ev, ["set-tool", tool])
+          : ev.button === ALT_BUTTON
+            ? S.ev.click(ev, ["set-tool-alt", tool])
+            : null}
+    >
+      <Icon class="size-full" />
+      {#if hotkey}
+        <span class="absolute bottom-0 right-.5 text-[0.5rem]">{hotkey}</span>
+      {/if}
+      {#if S.tool.alt === tool}
+        <span class="absolute bottom-.7 left-.5 text-[0.32rem]"
+          ><FavIcon /></span
+        >
+      {/if}
+    </button>
+  {/snippet}
+
+  {@render toolButton(
+    S.currentAction.type === "pan" ? HandToolClosedIcon : HandToolIcon,
+    "Hand",
+    null,
+    "hand"
+  )}
+  {@render toolButton(SelectToolIcon, "Selection", "1", "select")}
+  {@render toolButton(FrameToolIcon, "Linked Frame", "2", "frame")}
+  {@render toolButton(ArtToolIcon, "Art", "3", "art")}
+</div>
 
 <!-- PROFILES -->
 
@@ -149,15 +217,7 @@
   onmouseup={S.ev.mouseup}
   onmousemove={S.ev.mousemove}
   onwheel={S.ev.wheel}
-  onmousedown={(ev) =>
-    S.ev.mousedown(
-      ev,
-      ev.button === 0
-        ? ["selecting"]
-        : ev.button === 1
-          ? ["pan"]
-          : ["paint-start"]
-    )}
+  onmousedown={(ev) => S.ev.containerMouseDown(ev)}
   oncontextmenu={(ev) => ev.preventDefault()}
   role="presentation"
   class={cx("absolute inset-0 overflow-hidden", {
@@ -180,12 +240,12 @@
     style={S.expandedFrame ? "" : S.ui.transform()}
   >
     <!-- THE LITTLE SQUARE CURSOR -->
-    {#if S.currentAction.type === "none"}
+    <!-- {#if S.currentAction.type === "none"}
       {#if S.isOnGrid}
         <GhostBox box={S.mouse.box} lighter={true} />
       {/if}
-      <!-- THE FRAME SHOWN WHILE DRAGGING FOR CREATION -->
-    {/if}
+    {/if} -->
+    <!-- THE FRAME SHOWN WHILE DRAGGING FOR CREATION -->
     {#if S.currentAction.type === "selecting"}
       <GhostBox
         box={S.currentAction.boxNormalized}
@@ -201,7 +261,9 @@
         aria-label="Pick up selected area"
         style={S.ui.boxStyle(resultingBox) + S.ui.boxBorderRadius}
         onmousedown={(ev) =>
-          ev.button === 0 ? S.ev.mousedown(ev, ["frame-picker", null]) : null}
+          ev.button === MAIN_BUTTON
+            ? S.ev.mousedown(ev, ["frame-picker", null])
+            : null}
         class={cx(
           "z-selection-box b-2 absolute top-0 left-0 cursor-move",
           "bg-sky-500/10 b-sky-500/60"

@@ -22,6 +22,8 @@ import spaceColoring, {
 } from "./spaceColoring.svelte";
 import { bresenhamLine, resolveScreenEdgePanning } from "../../lib/utils";
 
+export type ToolType = "hand" | "select" | "frame" | "art";
+
 export type BoxResizeHandles =
   | "l"
   | "r"
@@ -33,6 +35,11 @@ export type BoxResizeHandles =
   | "bl";
 
 export type BoxedFrameWrapped = ThingWrapped<"BoxedFrame", BoxedFrame>;
+
+export const WHEEL_BUTTON = 1;
+export const MAIN_BUTTON = 0;
+export const ALT_BUTTON = 2;
+export const STATIC_PAN_TO_SELECT_DELAY = 399000;
 
 async function createStore() {
   const appEl = document.getElementById("app")!;
@@ -52,6 +59,11 @@ async function createStore() {
   let pixelsSelected = $state<PixelsFlat[]>([]);
   let selectedArea = $state<Box | null>(null);
   let expandedFrameUuid = $state<string | null>(null);
+
+  let tool = $state<{ main: ToolType; alt: ToolType }>({
+    main: "select",
+    alt: "art",
+  });
 
   const fitAllBox = $derived(
     containingBox(frames.allFlat.map((f) => f.value.box))
@@ -80,6 +92,10 @@ async function createStore() {
       return x >= vp.x && x <= vp.x + vp.w && y >= vp.y && y <= vp.y + vp.h;
     });
   });
+  let artToolSelectedColor = $state<{
+    main: number;
+    alt: number;
+  }>({ main: 1, alt: 0 });
 
   // ██╗███╗   ██╗██╗████████╗
   // ██║████╗  ██║██║╚══██╔══╝
@@ -127,6 +143,14 @@ async function createStore() {
         pixelsSelected = [];
         framesSelected = [];
         selectedArea = null;
+      }
+
+      if (ev.code === "Digit1") {
+        tool.main = "select";
+      } else if (ev.code === "Digit2") {
+        tool.main = "frame";
+      } else if (ev.code === "Digit3") {
+        tool.main = "art";
       }
     });
 
@@ -178,7 +202,7 @@ async function createStore() {
 
   type MouseDownActions =
     | { type: "none" }
-    | { type: "pan" }
+    | { type: "pan"; panned: boolean; timeout: any }
     | {
         type: "selecting";
         box: Box;
@@ -186,6 +210,7 @@ async function createStore() {
         isValid: boolean;
         touchingFrames: string[];
         touchingPixels: PixelsFlat[];
+        createFrame: boolean;
       }
     | {
         type: "moveFrame";
@@ -214,16 +239,32 @@ async function createStore() {
         type: "painting";
         lastX: number;
         lastY: number;
+        color: number;
       };
 
   let mouseDown = $state<MouseDownActions>({ type: "none" });
 
+  function containerMouseDown(ev: MouseEvent) {
+    switch (ev.button) {
+      case MAIN_BUTTON:
+        handleMouseDown(ev, [tool.main]);
+        break;
+      case ALT_BUTTON:
+        handleMouseDown(ev, [tool.alt]);
+        break;
+      case WHEEL_BUTTON:
+        handleMouseDown(ev, ["hand"]);
+        break;
+    }
+  }
+
   function handleMouseDown(
     ev: MouseEvent,
     target:
-      | ["selecting"]
-      | ["pan"]
-      | ["paint-start"]
+      | ["hand"]
+      | ["select"]
+      | ["frame"]
+      | ["art"]
       | ["frame-picker", string[] | null]
       | ["frame-resize", BoxResizeHandles, string]
       | ["copy-link", string]
@@ -234,12 +275,24 @@ async function createStore() {
       | ["pick-selection"]
   ) {
     ev.stopPropagation();
+    if (mouseDown.type === "pan") {
+      clearTimeout(mouseDown.timeout);
+    }
+
     switch (target[0]) {
-      case "pan": {
-        mouseDown = { type: "pan" };
+      case "hand": {
+        const timeout = setTimeout(() => {
+          if (mouseDown.type === "pan") {
+            if (!mouseDown.panned) {
+              handleMouseDown(ev, ["select"]);
+            }
+          }
+        }, STATIC_PAN_TO_SELECT_DELAY);
+
+        mouseDown = { type: "pan", panned: false, timeout };
         break;
       }
-      case "selecting": {
+      case "select": {
         selectedArea = null;
         pixelsSelected = [];
         framesSelected = [];
@@ -250,17 +303,42 @@ async function createStore() {
           isValid: boxIsValid(ui.mouse.box),
           touchingFrames: [],
           touchingPixels: filterByBox(colorPixelsInViewport, ui.mouse.box),
+          createFrame: false,
         };
         break;
       }
-      case "paint-start": {
-        const [x, y] = ui.mouseToGridPos(ev.clientX, ev.clientY);
+      case "frame": {
+        selectedArea = null;
+        pixelsSelected = [];
+        framesSelected = [];
         mouseDown = {
-          type: "painting",
-          lastX: x,
-          lastY: y,
+          type: "selecting",
+          box: ui.mouse.box,
+          boxNormalized: ui.mouse.box,
+          isValid: boxIsValid(ui.mouse.box),
+          touchingFrames: [],
+          touchingPixels: filterByBox(colorPixelsInViewport, ui.mouse.box),
+          createFrame: true,
         };
-        colorPixels.paint(x, y);
+        break;
+      }
+      case "art": {
+        const color =
+          ev.button === MAIN_BUTTON
+            ? artToolSelectedColor.main
+            : ev.button === ALT_BUTTON
+              ? artToolSelectedColor.alt
+              : null;
+        if (color !== null) {
+          const [x, y] = ui.mouseToGridPos(ev.clientX, ev.clientY);
+          mouseDown = {
+            type: "painting",
+            lastX: x,
+            lastY: y,
+            color,
+          };
+          colorPixels.paint(x, y, color);
+        }
         break;
       }
       case "copy-link": {
@@ -276,6 +354,7 @@ async function createStore() {
 
         break;
       }
+      case "frame":
       case "frame-picker": {
         const [startX, startY] = ui.mouseToGridPos(ev.clientX, ev.clientY);
         const t = (ev.currentTarget as HTMLDivElement).parentElement!;
@@ -354,6 +433,7 @@ async function createStore() {
     switch (mouseDown.type) {
       case "pan":
         ui.mouse.pan(ev.movementX, ev.movementY);
+        if (!mouseDown.panned) mouseDown.panned = true;
         break;
       case "selecting": {
         // PIN the frame and allow it to expand with cursor movement
@@ -432,8 +512,9 @@ async function createStore() {
       case "painting": {
         const [x, y] = ui.mouseToGridPos(ev.clientX, ev.clientY);
         const points = bresenhamLine(mouseDown.lastX, mouseDown.lastY, x, y);
+        const color = mouseDown.color;
         points.forEach(([x, y]) => {
-          colorPixels.paint(x, y);
+          colorPixels.paint(x, y, color);
         });
 
         mouseDown.lastX = x;
@@ -452,7 +533,8 @@ async function createStore() {
         if (
           mouseDown.isValid &&
           mouseDown.touchingFrames.length === 0 &&
-          mouseDown.touchingPixels.length === 0
+          mouseDown.touchingPixels.length === 0 &&
+          mouseDown.createFrame
         ) {
           const newFrame: BoxedFrame = {
             box: mouseDown.boxNormalized,
@@ -552,7 +634,11 @@ async function createStore() {
 
   async function handleClick(
     ev: MouseEvent,
-    target: ["pick-asset", string] | ["set-pallette", number]
+    target:
+      | ["pick-asset", string]
+      | ["set-art-tool-color", "main" | "alt", number]
+      | ["set-tool", ToolType]
+      | ["set-tool-alt", ToolType]
   ) {
     switch (target[0]) {
       case "pick-asset":
@@ -563,8 +649,18 @@ async function createStore() {
           });
         }
         break;
-      case "set-pallette":
-        colorPixels.setColor(target[1]);
+      case "set-art-tool-color":
+        if (target[1] === "main") {
+          artToolSelectedColor.main = target[2];
+        } else {
+          artToolSelectedColor.alt = target[2];
+        }
+        break;
+      case "set-tool":
+        tool.main = target[1];
+        break;
+      case "set-tool-alt":
+        tool.alt = target[1];
         break;
     }
   }
@@ -643,6 +739,7 @@ async function createStore() {
       canvasContainerEl = v;
     },
     ev: {
+      containerMouseDown: containerMouseDown,
       click: handleClick,
       mousedown: handleMouseDown,
       mousemove: handleMouseMove,
@@ -698,6 +795,12 @@ async function createStore() {
     },
     get selectedArea() {
       return selectedArea;
+    },
+    get tool() {
+      return tool;
+    },
+    get artToolSelectedColor() {
+      return artToolSelectedColor;
     },
   };
 }
