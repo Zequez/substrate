@@ -11,6 +11,7 @@ export function tooltip(
   return svooltip(node, {
     content: text,
     placement,
+    delay: 150,
     target: document.getElementById("tooltips")!,
   });
 }

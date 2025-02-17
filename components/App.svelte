@@ -103,7 +103,7 @@
     tool: ToolType
   )}
     <button
-      title={`${tooltipText} tool ${hotkey ? `— ${hotkey}` : ""}`}
+      use:tooltip={`${tooltipText} tool ${hotkey ? `— ${hotkey}` : ""}`}
       use:c={[
         "w-8 h-full flexcc rounded-md p2 relative text-black/70 b",
         {
