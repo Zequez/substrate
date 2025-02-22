@@ -6,6 +6,7 @@ export default defineConfig({
   changeLog: `
 # 0.1.5
   - Added an Excalidraw-UX-inspired toolbar with hand, select, frame and art tools
+  - You can now make frames take up the whole of the screen
   - Secret hot-key Shift+Z to reverse zoom direction
   - Remove cursor ghost frame
   - Made frame controls less moving, tinier; for now
