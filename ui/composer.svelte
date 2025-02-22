@@ -12,7 +12,6 @@
   } from "@stores/spaceColoring.svelte";
 
   import SpaceView from "./canvas/SpaceView.svelte";
-  import GhostBox from "./canvas/special-effects/GhostBox.svelte";
   import PixelsDisplay from "./canvas/special-effects/PixelsDisplay.svelte";
   import GridDisplay from "./canvas/special-effects/GridDisplay.svelte";
   import GridBox from "./canvas/special-effects/GridBox.svelte";
@@ -111,34 +110,32 @@
 >
   <!-- <GridBox box={{ h: 10, w: 10, x: 0, y: 0 }} visual="bg-white" /> -->
 
-  <!-- THE FRAME SHOWN WHILE DRAGGING FOR CREATION -->
-  {#if S.currentAction.type === "selecting"}
-    {#if S.currentAction.createFrame}
-      <GhostBox
-        box={S.currentAction.boxNormalized}
-        styl={S.currentAction.isValid ? "opaque" : "opaqueInvalid"}
-      />
-    {:else}
-      <GhostBox box={S.currentAction.boxNormalized} styl={"faded"} />
-    {/if}
+  {#if S.selecting}
+    <GridBox box={S.selecting.box} cx={"bg-sky-500/10 b-sky-500/60"} />
   {/if}
-  {#if S.selectedArea}
-    {@const resultingBox =
-      S.currentAction.type === "moveFrame"
-        ? addDelta(S.selectedArea, S.currentAction.boxDelta)
-        : S.selectedArea}
-    <button
-      aria-label="Pick up selected area"
-      style={S.ui.boxStyle(resultingBox) + S.ui.boxBorderRadius}
+
+  {#if S.creatingFrame}
+    <GridBox
+      box={S.creatingFrame.box}
+      cx={[
+        {
+          "bg-gray-100 b-black/10": S.creatingFrame.isValid,
+          "bg-gray-100/50 b-black/10": !S.creatingFrame.isValid,
+        },
+      ]}
+    />
+  {/if}
+
+  {#if S.selectedPixelsBox}
+    <GridBox
+      layer="z-selection-box"
+      box={S.selectedPixelsBox}
+      cx={"cursor-move b2 bg-sky-500/10 b-sky-500/60"}
       onmousedown={(ev) =>
         ev.button === MAIN_BUTTON
           ? S.ev.mousedown(ev, ["frame-picker", null])
           : null}
-      class={cx(
-        "z-selection-box b-2 absolute top-0 left-0 cursor-move",
-        "bg-sky-500/10 b-sky-500/60"
-      )}
-    ></button>
+    />
   {/if}
 
   <!-- ALL THE CREATED FRAMES -->

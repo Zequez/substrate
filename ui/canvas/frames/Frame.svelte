@@ -7,10 +7,10 @@
   import SS from "@stores/main.svelte";
   import assets from "@stores/assets.svelte";
 
-  import GhostBox from "../special-effects/GhostBox.svelte";
   import FrameInteracting from "./FrameInteracting.svelte";
   import FrameEmbed from "./FrameEmbed.svelte";
   import FrameAssetInfo from "./FrameAssetInfo.svelte";
+  import GridBox from "../special-effects/GridBox.svelte";
 
   const { wrappedFrame }: { wrappedFrame: BoxedFrameWrapped } = $props();
 
@@ -209,7 +209,7 @@
 {/if}
 
 {#if validBox}
-  <GhostBox box={validBox} styl={"bright"} />
+  <GridBox box={validBox} cx={"bg-sky-500/10 b-sky-500/60"} />
 {/if}
 
 {#if !isMoving && !isExpanded}

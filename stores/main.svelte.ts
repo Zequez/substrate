@@ -936,6 +936,30 @@ async function createStore() {
   // ██║██║ ╚████║   ██║   ███████╗██║  ██║██║     ██║  ██║╚██████╗███████╗
   // ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝╚══════╝
 
+  const selecting = $derived(
+    mouseDown.type === "selecting" && !mouseDown.createFrame
+      ? {
+          box: mouseDown.boxNormalized,
+        }
+      : null
+  );
+  const creatingFrame = $derived(
+    mouseDown.type === "selecting" && mouseDown.createFrame
+      ? {
+          isValid: mouseDown.isValid,
+          box: mouseDown.boxNormalized,
+        }
+      : null
+  );
+
+  const selectedPixelsBox = $derived(
+    selectedArea
+      ? mouseDown.type === "moveFrame"
+        ? addDelta(selectedArea, mouseDown.boxDelta)
+        : selectedArea
+      : null
+  );
+
   return {
     mountInit,
     get containerEl() {
@@ -943,6 +967,15 @@ async function createStore() {
     },
     set containerEl(v: HTMLDivElement) {
       canvasContainerEl = v;
+    },
+    get selecting() {
+      return selecting;
+    },
+    get creatingFrame() {
+      return creatingFrame;
+    },
+    get selectedPixelsBox() {
+      return selectedPixelsBox;
     },
     ev: {
       containerMouseDown: containerMouseDown,
