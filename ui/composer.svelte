@@ -1,14 +1,9 @@
 <script lang="ts">
   import cx from "classnames";
 
-  import BunchNavigation from "@center/experimental/BunchNavigation.svelte";
   import { addDelta } from "@center/Frame";
 
-  import SS, {
-    WHEEL_BUTTON,
-    ALT_BUTTON,
-    MAIN_BUTTON,
-  } from "@stores/main.svelte";
+  import SS, { MAIN_BUTTON } from "@stores/main.svelte";
 
   import {
     addDelta as addDeltaToPixels,
@@ -16,6 +11,7 @@
     removePixels,
   } from "@stores/spaceColoring.svelte";
 
+  import SpaceView from "./canvas/SpaceView.svelte";
   import GhostBox from "./canvas/special-effects/GhostBox.svelte";
   import PixelsDisplay from "./canvas/special-effects/PixelsDisplay.svelte";
   import GridDisplay from "./canvas/special-effects/GridDisplay.svelte";
@@ -62,7 +58,6 @@
 
 <!-- <GenericDnaInspector /> -->
 <!-- <GenericDnaSandbox H={genericZomeClient} /> -->
-
 <!-- <BunchNavigation /> -->
 
 <!-- HUD -->
@@ -93,68 +88,61 @@
   gridSize={S.grid.size}
   selecting={resolvedSelectingPixels}
 />
-<GridDisplay />
+<GridDisplay
+  x={S.pos.x}
+  y={S.pos.y}
+  z={S.pos.z}
+  w={S.pos.w}
+  h={S.pos.h}
+  units={S.grid.size}
+  color="#fff"
+/>
 
 <!-- CANVAS -->
 
 <!-- Note: Not transformed and z-index is unset -->
-<div
-  bind:this={S.containerEl}
-  onmouseup={S.ev.mouseup}
-  onmousemove={S.ev.mousemove}
-  onwheel={S.ev.wheel}
-  onmousedown={(ev) => S.ev.containerMouseDown(ev)}
-  oncontextmenu={(ev) => ev.preventDefault()}
-  role="presentation"
-  class={cx("absolute inset-0 overflow-hidden", {
-    "cursor-grabbing": S.currentActionIs("pan", "moveFrame"),
-  })}
+<SpaceView
+  x={S.pos.x}
+  y={S.pos.y}
+  z={S.pos.z}
+  w={S.pos.w}
+  h={S.pos.h}
+  units={S.grid.size}
 >
-  <!-- This centers the grid so that 0,0 is in the middle of the screen -->
-  <div
-    class={cx("absolute top-0 left-0 will-change-transform", {
-      "z-frames-container": !S.expandedFrame,
-    })}
-    style={S.expandedFrame ? "" : S.ui.transform()}
-  >
-    <!-- <GridBox
-      box={{ h: 10, w: 10, x: 0, y: 0 }}
-      visual="bg-red-500 rounded-lg"
-    /> -->
+  <!-- <GridBox box={{ h: 10, w: 10, x: 0, y: 0 }} visual="bg-white" /> -->
 
-    <!-- THE FRAME SHOWN WHILE DRAGGING FOR CREATION -->
-    {#if S.currentAction.type === "selecting"}
-      {#if S.currentAction.createFrame}
-        <GhostBox
-          box={S.currentAction.boxNormalized}
-          styl={S.currentAction.isValid ? "opaque" : "opaqueInvalid"}
-        />
-      {:else}
-        <GhostBox box={S.currentAction.boxNormalized} styl={"faded"} />
-      {/if}
+  <!-- THE FRAME SHOWN WHILE DRAGGING FOR CREATION -->
+  {#if S.currentAction.type === "selecting"}
+    {#if S.currentAction.createFrame}
+      <GhostBox
+        box={S.currentAction.boxNormalized}
+        styl={S.currentAction.isValid ? "opaque" : "opaqueInvalid"}
+      />
+    {:else}
+      <GhostBox box={S.currentAction.boxNormalized} styl={"faded"} />
     {/if}
-    {#if S.selectedArea}
-      {@const resultingBox =
-        S.currentAction.type === "moveFrame"
-          ? addDelta(S.selectedArea, S.currentAction.boxDelta)
-          : S.selectedArea}
-      <button
-        aria-label="Pick up selected area"
-        style={S.ui.boxStyle(resultingBox) + S.ui.boxBorderRadius}
-        onmousedown={(ev) =>
-          ev.button === MAIN_BUTTON
-            ? S.ev.mousedown(ev, ["frame-picker", null])
-            : null}
-        class={cx(
-          "z-selection-box b-2 absolute top-0 left-0 cursor-move",
-          "bg-sky-500/10 b-sky-500/60"
-        )}
-      ></button>
-    {/if}
+  {/if}
+  {#if S.selectedArea}
+    {@const resultingBox =
+      S.currentAction.type === "moveFrame"
+        ? addDelta(S.selectedArea, S.currentAction.boxDelta)
+        : S.selectedArea}
+    <button
+      aria-label="Pick up selected area"
+      style={S.ui.boxStyle(resultingBox) + S.ui.boxBorderRadius}
+      onmousedown={(ev) =>
+        ev.button === MAIN_BUTTON
+          ? S.ev.mousedown(ev, ["frame-picker", null])
+          : null}
+      class={cx(
+        "z-selection-box b-2 absolute top-0 left-0 cursor-move",
+        "bg-sky-500/10 b-sky-500/60"
+      )}
+    ></button>
+  {/if}
 
-    <!-- ALL THE CREATED FRAMES -->
-    {#each S.viewportFrames as wrappedFrame (wrappedFrame.uuid)}
-      <Frame {wrappedFrame} />
-    {/each}
-  </div>
-</div>
+  <!-- ALL THE CREATED FRAMES -->
+  {#each S.viewportFrames as wrappedFrame (wrappedFrame.uuid)}
+    <Frame {wrappedFrame} />
+  {/each}
+</SpaceView>

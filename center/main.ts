@@ -20,8 +20,6 @@ import type {
 } from "@theweave/api";
 import { type AppClient } from "@holochain/client";
 
-console.log("aSRTARST");
-
 (async function () {
   const appletServices: AppletServices = {
     creatables: {},

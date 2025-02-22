@@ -2,12 +2,10 @@ import classnames from "classnames";
 
 export const cx = classnames;
 
-export type CxDef = Array<
-  string | { [key: string]: boolean } | null | undefined
->;
-export type CxDefPlus = Array<
-  string | CxDef[] | { [key: string]: boolean } | null | undefined
->;
+type StylingDirective = string | { [key: string]: boolean } | null | undefined;
+
+export type CxDef = StylingDirective[];
+export type CxDefPlus = (StylingDirective | StylingDirective[])[];
 
 // Wrapper for classic classnames
 export function c(node: HTMLElement, classes: CxDef) {

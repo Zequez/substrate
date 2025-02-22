@@ -1,6 +1,5 @@
 import { onMount } from "svelte";
 import type { Box } from "../center/Frame";
-import { renderGrid } from "../center/grid";
 import { maybeReadLS } from "../center/snippets/utils";
 
 function spaceStore(config: { centerAt: Box | null }) {
@@ -9,10 +8,8 @@ function spaceStore(config: { centerAt: Box | null }) {
   let minZoom = $state(0.5);
   const zoomStep = 0.001; // % zoomed for each deltaY
 
-  let gridEl = $state<HTMLCanvasElement>(null!);
   let width = $state(0);
   let height = $state(0);
-  let ctx = $state<CanvasRenderingContext2D>(null!);
 
   const zoomPanLSKey = "ZPXPY";
 
@@ -77,58 +74,22 @@ function spaceStore(config: { centerAt: Box | null }) {
   function mountInit() {
     onMount(() => {
       function readViewport() {
-        if (gridEl) {
-          console.log("Setting viewport");
-          setViewport(gridEl.getBoundingClientRect());
-        }
+        setViewport(window.document.documentElement.getBoundingClientRect());
       }
 
       function setViewport(rect: DOMRect) {
         width = rect.width;
         height = rect.height;
-        gridEl.width = width;
-        gridEl.height = height;
       }
 
-      let frameId: any;
-      ctx = gridEl!.getContext("2d")!;
-      function initializeCanvas() {
-        const boundingBox = gridEl!.getBoundingClientRect();
-        if (boundingBox.width === 0 || boundingBox.height === 0) {
-          frameId = requestAnimationFrame(initializeCanvas); // Retry on the next frame
-        } else {
-          setViewport(boundingBox);
-          doRenderGrid();
-        }
-      }
-
-      initializeCanvas(); // Start initialization
+      readViewport();
 
       window.addEventListener("resize", readViewport);
 
       return () => {
         window.removeEventListener("resize", readViewport);
-        if (frameId) {
-          cancelAnimationFrame(frameId);
-        }
       };
     });
-
-    function doRenderGrid() {
-      if (ctx && width && height && gridEl.width && gridEl.height) {
-        renderGrid(ctx, {
-          width,
-          height,
-          zoom,
-          panX,
-          panY,
-          color: "#fff",
-          size: gridSize,
-        });
-      }
-    }
-
-    $effect(doRenderGrid);
   }
 
   function mouseToGridPos(x: number, y: number) {
@@ -142,9 +103,8 @@ function spaceStore(config: { centerAt: Box | null }) {
   }
 
   function screenToCanvasPos(x: number, y: number) {
-    const imgBox = gridEl.getBoundingClientRect();
-    const relativeX = x - imgBox.left - imgBox.width / 2;
-    const relativeY = y - imgBox.top - imgBox.height / 2;
+    const relativeX = x - 0 - width / 2;
+    const relativeY = y - 0 - height / 2;
     return [relativeX, relativeY] as [number, number];
   }
 
@@ -222,12 +182,6 @@ function spaceStore(config: { centerAt: Box | null }) {
       return height;
     },
     grid: {
-      get el() {
-        return gridEl;
-      },
-      set el(v: HTMLCanvasElement) {
-        gridEl = v;
-      },
       size: gridSize,
       get zSize() {
         return zGridSize;
