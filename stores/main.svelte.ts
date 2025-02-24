@@ -206,16 +206,6 @@ async function createStore() {
         focusedFrames = [];
       }
 
-      if (ev.code === "Digit1") {
-        tool.main = "select";
-      } else if (ev.code === "Digit2") {
-        tool.main = "frame";
-      } else if (ev.code === "Digit3") {
-        tool.main = "art";
-      } else if (ev.code === "Digit4") {
-        tool.main = "lightning";
-      }
-
       if (ev.code === "Tab") {
         ev.preventDefault();
 
@@ -981,12 +971,11 @@ async function createStore() {
     onCancel: () => {};
   };
 
-  let test = $state("ars");
-
   type Command =
     | ["none"]
-    // ---
     | ["move-towards", Direction, Distance]
+    | ["set-tool-to", ToolType, "main" | "alt"]
+    // ---
     | ["toggle-fullscreen", boolean]
     | ["delete-selection"]
     | ["dismiss-selection"]
@@ -1011,22 +1000,32 @@ async function createStore() {
     | ["moving-selection", GestureStream]
     | ["resizing-frame", GestureStream];
 
-  function processCommands(cmd: Command) {
+  function processCommands(...cmd: Command) {
     switch (cmd[0]) {
+      case "none":
+        return;
+        break;
       case "move-towards":
-        const [, direction, distance] = cmd;
+        {
+          const [, direction, distance] = cmd;
 
-        if (distance) {
-          const piDirection = (direction + 0.25) * 2 * Math.PI;
-          const xRatio = Math.cos(piDirection);
-          const yRatio = Math.sin(piDirection);
+          if (distance) {
+            const piDirection = (direction + 0.25) * 2 * Math.PI;
+            const xRatio = Math.cos(piDirection);
+            const yRatio = Math.sin(piDirection);
 
-          // Why is it that if I don't do this it creates an infinite effect loop?
-          // setTimeout(() => {
-          ui.mouse.pan(xRatio * distance, yRatio * distance);
-          // }, 50);
+            // Why is it that if I don't do this it creates an infinite effect loop?
+            // setTimeout(() => {
+            ui.mouse.pan(xRatio * distance, yRatio * distance);
+            // }, 50);
+          }
         }
         break;
+      case "set-tool-to": {
+        const [, toolType, boundTo] = cmd;
+        tool[boundTo] = toolType;
+        break;
+      }
     }
   }
 
@@ -1034,9 +1033,6 @@ async function createStore() {
     mountInit,
     get command() {
       return processCommands;
-    },
-    get test() {
-      return test;
     },
     get containerEl() {
       return canvasContainerEl;

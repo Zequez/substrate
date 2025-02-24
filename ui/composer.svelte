@@ -57,19 +57,9 @@
   );
 
   WASDSpeedControl((direction, distance) => {
-    S.command(["move-towards", direction, distance]);
+    S.command("move-towards", direction, distance);
   });
 </script>
-
-<!-- <WasdMonitor onDirectionChange={handleDirectionChange} /> -->
-<!-- <SpeedControl
-  onMove={(direction, distance) =>
-    S.command(["move-towards", direction, distance])}
-/> -->
-
-<div class="absolute top-0 left-0 z-300 text-xl bg-black text-white">
-  {S.test}
-</div>
 
 <!-- Experimental -->
 
@@ -78,7 +68,9 @@
 <!-- <BunchNavigation /> -->
 
 <!-- HUD -->
-<ToolsHud />
+<ToolsHud
+  onPickTool={(tool, boundTo) => S.command("set-tool-to", tool, boundTo)}
+/>
 <PeopleHud />
 <TrashBinHud
   onMouseMove={(ev) => S.ev.mousemove(ev, ["trash"])}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import HandToolClosedIcon from "~icons/fa6-solid/hand-back-fist";
   import HandToolIcon from "~icons/fa6-solid/hand";
   import SelectToolIcon from "~icons/fa6-solid/arrow-pointer";
@@ -7,6 +8,7 @@
   import FavIcon from "~icons/fa6-solid/star";
   import LightningToolIcon from "~icons/fa6-solid/bolt";
   import { tooltip, c, type IconProp } from "@center/snippets";
+
   import SS, {
     WHEEL_BUTTON,
     ALT_BUTTON,
@@ -15,6 +17,30 @@
   } from "@stores/main.svelte";
 
   const S = SS.store;
+
+  const {
+    onPickTool,
+  }: { onPickTool: (tool: ToolType, boundTo: "main" | "alt") => void } =
+    $props();
+
+  onMount(() => {
+    function handleNumberShortcuts(ev: KeyboardEvent) {
+      if (ev.code === "Digit1") {
+        onPickTool("select", "main");
+      } else if (ev.code === "Digit2") {
+        onPickTool("frame", "main");
+      } else if (ev.code === "Digit3") {
+        onPickTool("art", "main");
+      } else if (ev.code === "Digit4") {
+        onPickTool("lightning", "main");
+      }
+    }
+
+    window.addEventListener("keydown", handleNumberShortcuts);
+    return () => {
+      window.removeEventListener("keydown", handleNumberShortcuts);
+    };
+  });
 </script>
 
 <div
@@ -35,15 +61,9 @@
           "bg-gray-200 b-black/0": S.tool.main !== tool,
         },
       ]}
-      oncontextmenu={(ev) => (
-        ev.preventDefault(), S.ev.click(ev, ["set-tool-alt", tool])
-      )}
+      oncontextmenu={(ev) => (ev.preventDefault(), onPickTool(tool, "alt"))}
       onclick={(ev) =>
-        ev.button === MAIN_BUTTON
-          ? S.ev.click(ev, ["set-tool", tool])
-          : ev.button === ALT_BUTTON
-            ? S.ev.click(ev, ["set-tool-alt", tool])
-            : null}
+        ev.button === MAIN_BUTTON ? onPickTool(tool, "main") : null}
     >
       <Icon class="size-full" />
       {#if hotkey}
