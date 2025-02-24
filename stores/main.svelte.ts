@@ -14,7 +14,7 @@ import assets from "./assets.svelte";
 import profiles from "./profiles.svelte";
 import clients from "../center/clients";
 import spaceStore from "./space.svelte";
-import keyboardStore from "./keyboard.svelte";
+
 import spaceColoring, {
   filterByBox,
   minBoxForPixels,
@@ -134,10 +134,6 @@ async function createStore() {
   // Space stuff
   let isInFullscreen = $state<boolean>(!!document.fullscreenElement);
   const ui = spaceStore({ centerAt: frame ? frame.value.box : null });
-  const keyboardPan = keyboardStore((x, y) => {
-    ui.mouse.pan(x * ui.grid.size * 1.5, y * ui.grid.size * 1.5);
-    focusedFrames = [];
-  });
   let isOnGrid = $state(false);
 
   // Coloring pixels stuff
@@ -163,7 +159,6 @@ async function createStore() {
   function mountInit() {
     profiles.mountInit();
     ui.mountInit();
-    keyboardPan.mountInit();
 
     $effect(() => {
       if (fitAllBox) {
@@ -960,8 +955,89 @@ async function createStore() {
       : null
   );
 
+  //  ██████╗ ██████╗ ███╗   ███╗███╗   ███╗ █████╗ ███╗   ██╗██████╗ ███████╗
+  // ██╔════╝██╔═══██╗████╗ ████║████╗ ████║██╔══██╗████╗  ██║██╔══██╗██╔════╝
+  // ██║     ██║   ██║██╔████╔██║██╔████╔██║███████║██╔██╗ ██║██║  ██║███████╗
+  // ██║     ██║   ██║██║╚██╔╝██║██║╚██╔╝██║██╔══██║██║╚██╗██║██║  ██║╚════██║
+  // ╚██████╗╚██████╔╝██║ ╚═╝ ██║██║ ╚═╝ ██║██║  ██║██║ ╚████║██████╔╝███████║
+  //  ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝ ╚══════╝
+
+  type Direction = number;
+  type Distance = number;
+  type UUID = string;
+
+  type FocusAction =
+    | "next"
+    | "prev"
+    | "forward"
+    | "backwards"
+    | "upwards"
+    | "downward";
+
+  type GestureStream = {
+    onStart: () => {};
+    onUpdate: () => {};
+    onSucceed: () => {};
+    onCancel: () => {};
+  };
+
+  let test = $state("ars");
+
+  type Command =
+    | ["none"]
+    // ---
+    | ["move-towards", Direction, Distance]
+    | ["toggle-fullscreen", boolean]
+    | ["delete-selection"]
+    | ["dismiss-selection"]
+    | ["select-tool", ToolType]
+    | ["reverse-zoom"]
+    | ["copy-link", UUID]
+    | ["set-frame-link", UUID, boolean]
+    | ["fit-all-frames"]
+    | ["set-expanded-frames", UUID[]]
+    | ["set-last-hovered-frame", UUID]
+    | ["zoom-add", number]
+    | ["zoom-set", number]
+
+    // ---
+    | ["move-focus", FocusAction]
+    | ["power-up-focused"]
+    // ---
+    | ["panning", GestureStream]
+    | ["selecting", GestureStream]
+    | ["creating-frame", GestureStream]
+    | ["paint", GestureStream]
+    | ["moving-selection", GestureStream]
+    | ["resizing-frame", GestureStream];
+
+  function processCommands(cmd: Command) {
+    switch (cmd[0]) {
+      case "move-towards":
+        const [, direction, distance] = cmd;
+
+        if (distance) {
+          const piDirection = (direction + 0.25) * 2 * Math.PI;
+          const xRatio = Math.cos(piDirection);
+          const yRatio = Math.sin(piDirection);
+
+          // Why is it that if I don't do this it creates an infinite effect loop?
+          // setTimeout(() => {
+          ui.mouse.pan(xRatio * distance, yRatio * distance);
+          // }, 50);
+        }
+        break;
+    }
+  }
+
   return {
     mountInit,
+    get command() {
+      return processCommands;
+    },
+    get test() {
+      return test;
+    },
     get containerEl() {
       return canvasContainerEl;
     },

@@ -11,17 +11,21 @@
     removePixels,
   } from "@stores/spaceColoring.svelte";
 
-  import SpaceView from "./canvas/SpaceView.svelte";
+  import SpaceViewContainer from "./canvas/SpaceView.svelte";
   import PixelsDisplay from "./canvas/special-effects/PixelsDisplay.svelte";
   import GridDisplay from "./canvas/special-effects/GridDisplay.svelte";
+
+  import ColorPickerHud from "./hud/ColorPicker.svelte";
+  import TrashBinHud from "./hud/TrashBin.svelte";
+  import PeopleHud from "./hud/People.svelte";
+  import ToolsHud from "./hud/Tools.svelte";
+  import ViewHud from "./hud/View.svelte";
+
   import GridBox from "./canvas/special-effects/GridBox.svelte";
   import Frame from "./canvas/frames/Frame.svelte";
 
-  import ColorPicker from "./hud/ColorPicker.svelte";
-  import TrashBin from "./hud/TrashBin.svelte";
-  import People from "./hud/People.svelte";
-  import Tools from "./hud/Tools.svelte";
-  import View from "./hud/View.svelte";
+  // import SpeedControl from "./SpeedControl.svelte";
+  import WASDSpeedControl from "./WASDSpeedControl";
 
   const S = SS.store;
   S.mountInit();
@@ -51,7 +55,21 @@
         )
       : S.pixelsInViewport
   );
+
+  WASDSpeedControl((direction, distance) => {
+    S.command(["move-towards", direction, distance]);
+  });
 </script>
+
+<!-- <WasdMonitor onDirectionChange={handleDirectionChange} /> -->
+<!-- <SpeedControl
+  onMove={(direction, distance) =>
+    S.command(["move-towards", direction, distance])}
+/> -->
+
+<div class="absolute top-0 left-0 z-300 text-xl bg-black text-white">
+  {S.test}
+</div>
 
 <!-- Experimental -->
 
@@ -60,23 +78,23 @@
 <!-- <BunchNavigation /> -->
 
 <!-- HUD -->
-<Tools />
-<People />
-<TrashBin
+<ToolsHud />
+<PeopleHud />
+<TrashBinHud
   onMouseMove={(ev) => S.ev.mousemove(ev, ["trash"])}
   onMouseUp={S.ev.mouseup}
   show={A.type === "moveFrame"}
   opened={A.type === "moveFrame" && A.trashing}
 />
 {#if (!S.expandedFrame && S.tool.main === "art") || S.tool.alt === "art"}
-  <ColorPicker
+  <ColorPickerHud
     mainColor={S.artToolSelectedColor.main}
     onPickMain={(ev, i) => S.ev.click(ev, ["set-art-tool-color", "main", i])}
     altColor={S.artToolSelectedColor.alt}
     onPickAlt={(ev, i) => S.ev.click(ev, ["set-art-tool-color", "alt", i])}
   />
 {/if}
-<View />
+<ViewHud />
 
 <!-- SPECIAL EFFECts -->
 
@@ -100,7 +118,7 @@
 <!-- CANVAS -->
 
 <!-- Note: Not transformed and z-index is unset -->
-<SpaceView
+<SpaceViewContainer
   x={S.pos.x}
   y={S.pos.y}
   z={S.pos.z}
@@ -142,4 +160,4 @@
   {#each S.viewportFrames as wrappedFrame (wrappedFrame.uuid)}
     <Frame {wrappedFrame} />
   {/each}
-</SpaceView>
+</SpaceViewContainer>
