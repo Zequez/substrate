@@ -27,16 +27,17 @@
   );
 </script>
 
+<!-- bind:this={S.containerEl} -->
 <div
-  bind:this={S.containerEl}
-  onmouseup={S.ev.mouseup}
-  onmousemove={S.ev.mousemove}
-  onwheel={S.ev.wheel}
-  onmousedown={(ev) => S.ev.containerMouseDown(ev)}
+  onmouseup={S.ev.mouseup("container")}
+  onmousemove={S.ev.mousemove("container")}
+  onwheel={S.ev.wheel("container")}
+  onmousedown={S.ev.containerMouseDown}
   oncontextmenu={(ev) => ev.preventDefault()}
   role="presentation"
   class={cx("absolute inset-0 overflow-hidden", {
-    "cursor-grabbing": S.currentActionIs("pan", "moveFrame"),
+    "cursor-grabbing":
+      S.dragState.type === "panning" || S.dragState.type === "movingFrames",
   })}
 >
   <!-- This centers the grid so that 0,0 is in the middle of the screen -->

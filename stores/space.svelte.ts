@@ -235,8 +235,10 @@ function spaceStore(config: { centerAt: Box | null }) {
         mouseY = y;
       },
       pan(deltaX: number, deltaY: number) {
-        panX = panX + deltaX / zoom / gridSize;
-        panY = panY + deltaY / zoom / gridSize;
+        if (deltaX || deltaY) {
+          panX = panX + deltaX / zoom / gridSize;
+          panY = panY + deltaY / zoom / gridSize;
+        }
       },
       get gridX() {
         return mouseGridX;

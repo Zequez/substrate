@@ -15,19 +15,23 @@
   const { wrappedFrame }: { wrappedFrame: BoxedFrameWrapped } = $props();
 
   const S = SS.store;
-  const A = $derived(S.currentAction);
+  const A = $derived(S.dragState);
 
   const uuid = $derived(wrappedFrame.uuid);
   const frame = $derived(wrappedFrame.value);
 
   const [box, validBox] = $derived(S.resolveFrameBox(uuid, frame));
 
-  const isResizing = $derived(A.type === "resizeFrame" && A.uuid === uuid);
+  const isResizing = $derived(A.type === "resizingFrame" && A.uuid === uuid);
   const isMoving = $derived(
-    A.type === "moveFrame" && A.uuids.indexOf(uuid) !== -1
+    A.type === "movingFrames" &&
+      S.framesSelected.indexOf(uuid) !== -1 &&
+      A.moved
   );
   const isTrashing = $derived(
-    A.type === "moveFrame" && A.uuids.indexOf(uuid) !== -1 && A.trashing
+    A.type === "movingFrames" &&
+      S.framesSelected.indexOf(uuid) !== -1 &&
+      A.trashing
   );
   const isExpanded = $derived(S.expandedFrame === uuid);
   const isSelected = $derived(
@@ -38,10 +42,11 @@
   const isLastInteracted = $derived(S.lastInteractionUuid === uuid);
   const isFocused = $derived(S.focusedFrames.indexOf(uuid) !== -1);
   const isPowered = $derived(S.poweredFrames.indexOf(uuid) !== -1);
+  // const hasStartedDragging = $derived(S.dragState )
 
   const boxStyle = $derived(S.ui.boxStyle(box));
   const transformOriginStyle = $derived(
-    A.type === "moveFrame"
+    A.type === "movingFrames"
       ? `transform-origin: ${A.pickX * 100}% ${A.pickY * 100}%`
       : ""
   );
@@ -86,7 +91,8 @@
 
   function handleDblClick(ev: MouseEvent) {
     didDblClick = true;
-    S.ev.dblClick(ev, ["power-up", uuid]);
+    // S.ev.dblClick(ev, ["power-up", uuid]);
+    // S.cmd('frame', 'power-up', uuid);
   }
 
   function handleMouseUp(ev: MouseEvent) {
@@ -94,17 +100,19 @@
   }
 
   function handleMouseDown(ev: MouseEvent) {
-    ev.stopPropagation();
-    didDblClick = false;
-    didMouseUp = false;
-    setTimeout(() => {
-      if (!didDblClick && !didMouseUp) {
-        S.ev.mousedown(ev, ["frame-picker", isSelected ? null : [uuid]]);
-      }
-      if (!didDblClick && didMouseUp) {
-        S.ev.click(ev, ["focus-frame", uuid]);
-      }
-    }, 200);
+    // S.ev.mousedown('frame', uuid, 'drag-handle')
+    // S.ev.mousedown('frame', uuid, 'resize-handle')
+    // ev.stopPropagation();
+    // didDblClick = false;
+    // didMouseUp = false;
+    // setTimeout(() => {
+    //   if (!didDblClick && !didMouseUp) {
+    //     S.ev.mousedown(ev, ["frame", isSelected ? null : [uuid]]);
+    //   }
+    //   if (!didDblClick && didMouseUp) {
+    //     S.ev.click(ev, ["focus-frame", uuid]);
+    //   }
+    // }, 200);
   }
 </script>
 
@@ -113,7 +121,7 @@
 <!-- This allow us, for example to have a z-index for shadows that is below all frames -->
 
 <!-- Shadow frame element -->
-<div
+<!-- <div
   class={cx("absolute top-0 left-0 will-change-transform", {
     "z-frame-shadow": !isMoving,
     "duration-150 transition-property-[transform,width,height]":
@@ -130,12 +138,12 @@
       {
         "scale-50": isTrashing,
         "scale-100": !isMoving,
-        "scale-102": isMoving && !isTrashing,
+        // "scale-102": isMoving && !isTrashing,
       },
     ]}
     style={S.ui.boxBorderRadius + `box-shadow: ${shadowStyle};`}
   ></div>
-</div>
+</div> -->
 
 <!-- Solid frame element z-40 -->
 <div
@@ -159,11 +167,13 @@
       "duration-150 transition-transform",
       {
         "scale-50 opacity-30": isTrashing,
-        "scale-102 opacity-100": isMoving && !isTrashing,
-        "bg-gray-100 b-1 b-gray-300 shadow-[inset_0px_0px_1px_0px_#0003]":
-          !isPowered,
-        "bg-gray-100 b-1 b-yellow-500 shadow-[inset_0px_0px_1px_0px_#0003]":
+        // "scale-102 opacity-100": isMoving && !isTrashing,
+        "bg-gray-100 b-4 b-gray-300 shadow-[inset_0px_0px_1px_0px_#0003]":
+          !isPowered && !isSelected,
+        "bg-gray-100 b-4 b-yellow-500 shadow-[inset_0px_0px_1px_0px_#0003]":
           isPowered && !isExpanded,
+        "bg-gray-100 b-4 b-blue-500 shadow-[inset_0px_0px_1px_0px_#0003]":
+          isSelected && !isExpanded,
         "b-0": isExpanded,
         "cursor-default": !isMoving,
         "cursor-grabbing": isMoving,
@@ -171,9 +181,7 @@
     ]}
     role="button"
     tabindex="-1"
-    onmousedown={handleMouseDown}
-    onmouseup={handleMouseUp}
-    ondblclick={handleDblClick}
+    onmousedown={S.ev.mousedown("frame", uuid, "drag-handle")}
   >
     {#if frame.assetUrl && asset}
       {#if isPowered}
@@ -189,14 +197,14 @@
   </div>
 </div>
 
-{#if isSelected}
+<!-- {#if isSelected}
   <div
     class="size-full bg-blue-500/50 absolute z-150 cursor-move"
     style="{boxStyle}; {S.ui.boxBorderRadius}"
   ></div>
-{/if}
+{/if} -->
 
-{#if isFocused}
+<!-- {#if isSelected}
   <div class="absolute" style={boxStyle}>
     <div
       class={`absolute -inset-4 z-focus-indicator pointer-events-none
@@ -206,7 +214,7 @@
       style="{S.ui.boxBorderRadius}; border-width: {3 / S.pos.z}px;"
     ></div>
   </div>
-{/if}
+{/if} -->
 
 {#if validBox}
   <GridBox box={validBox} cx={"bg-sky-500/10 b-sky-500/60"} />

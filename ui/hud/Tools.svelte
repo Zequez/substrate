@@ -19,20 +19,20 @@
   const S = SS.store;
 
   const {
-    onPickTool,
-  }: { onPickTool: (tool: ToolType, boundTo: "main" | "alt") => void } =
+    onClickTool,
+  }: { onClickTool: (tool: ToolType, boundTo: "main" | "alt") => void } =
     $props();
 
   onMount(() => {
     function handleNumberShortcuts(ev: KeyboardEvent) {
       if (ev.code === "Digit1") {
-        onPickTool("select", "main");
+        onClickTool("select", "main");
       } else if (ev.code === "Digit2") {
-        onPickTool("frame", "main");
+        onClickTool("frame", "main");
       } else if (ev.code === "Digit3") {
-        onPickTool("art", "main");
+        onClickTool("art", "main");
       } else if (ev.code === "Digit4") {
-        onPickTool("lightning", "main");
+        onClickTool("lightning", "main");
       }
     }
 
@@ -61,9 +61,9 @@
           "bg-gray-200 b-black/0": S.tool.main !== tool,
         },
       ]}
-      oncontextmenu={(ev) => (ev.preventDefault(), onPickTool(tool, "alt"))}
+      oncontextmenu={(ev) => (ev.preventDefault(), onClickTool(tool, "alt"))}
       onclick={(ev) =>
-        ev.button === MAIN_BUTTON ? onPickTool(tool, "main") : null}
+        ev.button === MAIN_BUTTON ? onClickTool(tool, "main") : null}
     >
       <Icon class="size-full" />
       {#if hotkey}
@@ -78,7 +78,7 @@
   {/snippet}
 
   {@render toolButton(
-    S.currentAction.type === "pan" ? HandToolClosedIcon : HandToolIcon,
+    S.dragState.type === "panning" ? HandToolClosedIcon : HandToolIcon,
     "Hand",
     null,
     "hand"

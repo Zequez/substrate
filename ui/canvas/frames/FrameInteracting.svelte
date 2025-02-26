@@ -18,7 +18,7 @@
 <!-- Entering area detector -->
 <div
   role="presentation"
-  onmouseover={(ev) => S.ev.mouseover(ev, uuid)}
+  onmouseover={S.ev.mouseover("frame", uuid)}
   onfocus={() => {}}
   style={boxStyle}
   use:c={[
@@ -30,10 +30,10 @@
 ></div>
 
 <!-- FLOATING INFO/CONTROLS -->
-{#if S.lastInteractionUuid === uuid && !S.currentActionIs("resizeFrame", "pan")}
+{#if S.lastInteractionUuid === uuid && (S.dragState.type === "none" || S.dragState.type === "resizingFrame")}
   {@const resizeHandler = (ev: MouseEvent, handle: BoxResizeHandles) =>
-    S.ev.mousedown(ev, ["frame-resize", handle, uuid])}
-  {#if S.pos.z > 0.2 && !S.currentActionIs("moveFrame", "selecting", "resizeFrame")}
+    S.ev.mousedown("frame", uuid, "resize-handle", handle)(ev)}
+  {#if S.pos.z > 0.2}
     <div
       class="absolute top-0 left-0 z-frame-resize-handles pointer-events-none"
       style={boxStyle}

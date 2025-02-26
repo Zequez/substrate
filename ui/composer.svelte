@@ -31,33 +31,33 @@
   S.mountInit();
 
   $effect(() => {
-    if (S.currentAction.type !== "none") {
+    if (S.dragState.type !== "none") {
       document.body.classList.add("select-none");
     } else {
       document.body.classList.remove("select-none");
     }
   });
 
-  const A = $derived(S.currentAction);
+  // const A = $derived(S.currentAction);
 
-  const resolvedSelectingPixels = $derived(
-    A.type === "selecting"
-      ? A.touchingPixels
-      : A.type === "moveFrame"
-        ? addDeltaToPixels(S.pixelsSelected, A.lastValidBoxDelta)
-        : S.pixelsSelected
-  );
-  const resolvedPixels = $derived(
-    A.type === "moveFrame" && A.pixels.length !== 0
-      ? addPixels(
-          removePixels(S.pixelsInViewport, A.pixels),
-          resolvedSelectingPixels
-        )
-      : S.pixelsInViewport
-  );
+  // const resolvedSelectingPixels = $derived(
+  //   A.type === "selecting"
+  //     ? A.touchingPixels
+  //     : A.type === "moveFrame"
+  //       ? addDeltaToPixels(S.pixelsSelected, A.lastValidBoxDelta)
+  //       : S.pixelsSelected
+  // );
+  // const resolvedPixels = $derived(
+  //   A.type === "moveFrame" && A.pixels.length !== 0
+  //     ? addPixels(
+  //         removePixels(S.pixelsInViewport, A.pixels),
+  //         resolvedSelectingPixels
+  //       )
+  //     : S.pixelsInViewport
+  // );
 
   WASDSpeedControl((direction, distance) => {
-    S.command("move-towards", direction, distance);
+    S.cmd("move-towards", direction, distance);
   });
 </script>
 
@@ -69,34 +69,34 @@
 
 <!-- HUD -->
 <ToolsHud
-  onPickTool={(tool, boundTo) => S.command("set-tool-to", tool, boundTo)}
+  onClickTool={(tool, boundTo) => S.cmd("set-tool-to", tool, boundTo)}
 />
 <PeopleHud />
 <TrashBinHud
-  onMouseMove={(ev) => S.ev.mousemove(ev, ["trash"])}
-  onMouseUp={S.ev.mouseup}
-  show={A.type === "moveFrame"}
-  opened={A.type === "moveFrame" && A.trashing}
+  onMouseMove={S.ev.mousemove("trash")}
+  onMouseUp={S.ev.mouseup("trash")}
+  show={S.dragState.type === "movingFrames"}
+  opened={S.dragState.type === "movingFrames" && S.dragState.trashing}
 />
-{#if (!S.expandedFrame && S.tool.main === "art") || S.tool.alt === "art"}
+<!-- {#if (!S.expandedFrame && S.tool.main === "art") || S.tool.alt === "art"}
   <ColorPickerHud
     mainColor={S.artToolSelectedColor.main}
     onPickMain={(ev, i) => S.ev.click(ev, ["set-art-tool-color", "main", i])}
     altColor={S.artToolSelectedColor.alt}
     onPickAlt={(ev, i) => S.ev.click(ev, ["set-art-tool-color", "alt", i])}
   />
-{/if}
+{/if} -->
 <ViewHud />
 
 <!-- SPECIAL EFFECts -->
 
-<PixelsDisplay
+<!-- <PixelsDisplay
   pixels={resolvedPixels}
   buffer={S.spaceColoring.buffer}
   pos={S.pos}
   gridSize={S.grid.size}
   selecting={resolvedSelectingPixels}
-/>
+/> -->
 <GridDisplay
   x={S.pos.x}
   y={S.pos.y}
@@ -118,25 +118,37 @@
   h={S.pos.h}
   units={S.grid.size}
 >
+  <!-- <PannableSurface
+    onPan={(x, y) => S.cmd("move-towards", x, y)}
+    boundTo={{
+      "space+main": S.tool.main !== "hand",
+      main: S.tool.main === "hand",
+      alt: S.tool.alt === "hand",
+      middle: true,
+    }}
+  /> -->
   <!-- <GridBox box={{ h: 10, w: 10, x: 0, y: 0 }} visual="bg-white" /> -->
 
-  {#if S.selecting}
-    <GridBox box={S.selecting.box} cx={"bg-sky-500/10 b-sky-500/60"} />
+  {#if S.dragState.type === "selecting"}
+    <GridBox
+      box={S.dragState.boxNormalized}
+      cx={"bg-sky-500/10 b-sky-500/60"}
+    />
   {/if}
 
-  {#if S.creatingFrame}
+  {#if S.dragState.type === "creatingFrame"}
     <GridBox
-      box={S.creatingFrame.box}
+      box={S.dragState.boxNormalized}
       cx={[
         {
-          "bg-gray-100 b-black/10": S.creatingFrame.isValid,
-          "bg-gray-100/50 b-black/10": !S.creatingFrame.isValid,
+          "bg-gray-100 b-black/10": S.dragState.isValid,
+          "bg-gray-100/50 b-black/10": !S.dragState.isValid,
         },
       ]}
     />
   {/if}
 
-  {#if S.selectedPixelsBox}
+  <!-- {#if S.selectedPixelsBox}
     <GridBox
       layer="z-selection-box"
       box={S.selectedPixelsBox}
@@ -146,7 +158,7 @@
           ? S.ev.mousedown(ev, ["frame-picker", null])
           : null}
     />
-  {/if}
+  {/if} -->
 
   <!-- ALL THE CREATED FRAMES -->
   {#each S.viewportFrames as wrappedFrame (wrappedFrame.uuid)}
