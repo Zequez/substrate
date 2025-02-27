@@ -1,37 +1,53 @@
 import { onMount } from "svelte";
 import type { Box } from "../center/Frame";
 import { maybeReadLS } from "../center/snippets/utils";
-
+export type Viewport = {
+  width: number;
+  height: number;
+  offsetX: number;
+  offsetY: number;
+  screenW: number;
+  screenH: number;
+};
 function spaceStore(config: { centerAt: Box | null }) {
   const gridSize = 30;
   const maxZoom = 4; // x4 the original size
   let minZoom = $state(0.5);
   const zoomStep = 0.001; // % zoomed for each deltaY
 
-  let width = $state(0);
-  let height = $state(0);
+  let vp = $state<Viewport>({
+    width: 0,
+    height: 0,
+    offsetX: 0,
+    offsetY: 0,
+    screenW: 0,
+    screenH: 0,
+  });
+  let vpEl = $state<HTMLDivElement>(null!);
 
   const zoomPanLSKey = "ZPXPY";
 
-  const initialPos = (() => {
+  type Pos = {
+    x: number;
+    y: number;
+    z: number;
+  };
+
+  const initialPos: Pos = (() => {
     if (config.centerAt) {
       const { x, y, w, h } = config.centerAt;
       console.log("Setting zoom and pan to be centered on linked frame");
       return {
-        zoom: 1,
-        panX: -(x + w / 2),
-        panY: -(y + h / 2),
+        z: 1,
+        x: -(x + w / 2),
+        y: -(y + h / 2),
       };
     } else {
-      return maybeReadLS(zoomPanLSKey, { zoom: 1, panX: 0, panY: 0 });
+      return maybeReadLS(zoomPanLSKey, { z: 1, x: 0, y: 0 });
     }
   })();
 
-  console.log("INITIAL POS", initialPos);
-
-  let zoom = $state(initialPos.zoom);
-  let panX = $state(initialPos.panX);
-  let panY = $state(initialPos.panY);
+  let pos = $state(initialPos);
 
   // If no centerAt is provided, save zoom and pan when they change
   if (!config.centerAt) {
@@ -39,72 +55,45 @@ function spaceStore(config: { centerAt: Box | null }) {
       let timeout: any = 0;
       $effect(() => {
         // Make dependency explicit otherwise doesn't work because $effect.root
-        [zoom, panX, panY];
+        [pos.z, pos.x, pos.y];
         if (timeout) clearTimeout(timeout);
         setTimeout(() => {
-          localStorage.setItem(
-            zoomPanLSKey,
-            JSON.stringify({ zoom, panX, panY })
-          );
+          localStorage.setItem(zoomPanLSKey, JSON.stringify({ ...pos }));
         }, 100);
       });
     });
   }
-
-  let zWidth = $derived(width * zoom);
-  let zHeight = $derived(height * zoom);
 
   let mouseX = $state(0);
   let mouseY = $state(0);
   let [mouseGridX, mouseGridY] = $derived(mouseToGridPos(mouseX, mouseY));
   let mouseBox = $derived<Box>({ x: mouseGridX, y: mouseGridY, w: 1, h: 1 });
 
-  let zPanX = $derived(panX * zoom);
-  let zPanY = $derived(panY * zoom);
-  let zGridSize = $derived(gridSize * zoom);
-
-  const viewportMargin = 2;
-  let viewport = $derived({
-    x: -panX - width / 2 / gridSize / zoom - viewportMargin,
-    y: -panY - height / 2 / gridSize / zoom - viewportMargin,
-    w: width / gridSize / zoom + viewportMargin,
-    h: height / gridSize / zoom + viewportMargin,
+  const vpBoxMargin = 2;
+  let vpBox = $derived({
+    x: -pos.z - vp.width / 2 / gridSize / pos.z - vpBoxMargin,
+    y: -pos.z - vp.height / 2 / gridSize / pos.z - vpBoxMargin,
+    w: vp.width / gridSize / pos.z + vpBoxMargin,
+    h: vp.height / gridSize / pos.z + vpBoxMargin,
   });
-
-  function mountInit() {
-    onMount(() => {
-      function readViewport() {
-        setViewport(window.document.documentElement.getBoundingClientRect());
-      }
-
-      function setViewport(rect: DOMRect) {
-        width = rect.width;
-        height = rect.height;
-      }
-
-      readViewport();
-
-      window.addEventListener("resize", readViewport);
-
-      return () => {
-        window.removeEventListener("resize", readViewport);
-      };
-    });
-  }
 
   function mouseToGridPos(x: number, y: number) {
     const gridX = Math.floor(
-      (x - panX * zoom * gridSize - width / 2) / gridSize / zoom
+      (x - vp.offsetX - pos.x * pos.z * gridSize - vp.width / 2) /
+        gridSize /
+        pos.z
     );
     const gridY = Math.floor(
-      (y - panY * zoom * gridSize - height / 2) / gridSize / zoom
+      (y - vp.offsetY - pos.y * pos.z * gridSize - vp.height / 2) /
+        gridSize /
+        pos.z
     );
     return [gridX, gridY];
   }
 
-  function screenToCanvasPos(x: number, y: number) {
-    const relativeX = x - 0 - width / 2;
-    const relativeY = y - 0 - height / 2;
+  function screenToCanvasPos(clientX: number, clientY: number) {
+    const relativeX = clientX - vp.offsetX - vp.width / 2;
+    const relativeY = clientY - vp.offsetY - vp.height / 2;
     return [relativeX, relativeY] as [number, number];
   }
 
@@ -115,44 +104,47 @@ function spaceStore(config: { centerAt: Box | null }) {
     h: box.h * gridSize,
   });
 
-  function setZoom(newZoom: number, centerX?: number, centerY?: number) {
-    if (!centerX) centerX = width / 2;
-    if (!centerY) centerY = height / 2;
+  function setZoom(newZoom: number, clientX?: number, clientY?: number) {
+    if (!clientX) clientX = vp.width / 2 + vp.offsetX;
+    if (!clientY) clientY = vp.height / 2 + vp.offsetY;
+    console.log("Setting zoom", clientX, clientY);
     let processedZoom = newZoom;
     if (newZoom < minZoom) processedZoom = minZoom;
     if (newZoom > maxZoom) processedZoom = maxZoom;
-    const zoomDelta = 1 - processedZoom / zoom;
+    const zoomDelta = 1 - processedZoom / pos.z;
     if (zoomDelta !== 0) {
-      const screenPos = screenToCanvasPos(centerX, centerY);
-      panX += (screenPos[0] * zoomDelta) / processedZoom / gridSize;
-      panY += (screenPos[1] * zoomDelta) / processedZoom / gridSize;
+      const canvasPos = screenToCanvasPos(clientX, clientY);
+      console.log("Canvas POS", canvasPos);
+      pos.x += (canvasPos[0] * zoomDelta) / processedZoom / gridSize;
+      pos.y += (canvasPos[1] * zoomDelta) / processedZoom / gridSize;
     }
-    zoom = processedZoom;
+    pos.z = processedZoom;
   }
 
   function setMinZoomToFitBox(box: Box) {
     const w = (box.w + 5) * gridSize;
     const h = (box.h + 5) * gridSize;
-    const zoomForW = width / w;
-    const zoomForH = height / h;
+    const zoomForW = vp.width / w;
+    const zoomForH = vp.height / h;
     minZoom = Math.min(zoomForW, zoomForH, 0.5);
   }
 
   function panZoomToFit(box: Box) {
     const w = (box.w + 5) * gridSize;
     const h = (box.h + 5) * gridSize;
-    const zoomForW = width / w;
-    const zoomForH = height / h;
+    const zoomForW = vp.width / w;
+    const zoomForH = vp.height / h;
     const newZoom = Math.min(zoomForW, zoomForH, 0.5);
-    zoom = newZoom;
-    const newPanX = box.x + box.w / 2 + 2.5 - (width * zoom) / gridSize / 2;
-    const newPanY = box.y + box.h / 2 + 2.5 - (height * zoom) / gridSize / 2;
-    panX = -newPanX;
-    panY = -newPanY;
+    pos.z = newZoom;
+    const newPanX = box.x + box.w / 2 + 2.5 - (vp.width * pos.z) / gridSize / 2;
+    const newPanY =
+      box.y + box.h / 2 + 2.5 - (vp.height * pos.z) / gridSize / 2;
+    pos.x = -newPanX;
+    pos.y = -newPanY;
   }
 
   function transform() {
-    return `transform: translateX(${panX * gridSize * zoom + width / 2}px) translateY(${panY * gridSize * zoom + height / 2}px) scale(${zoom})`;
+    return `transform: translateX(${pos.x * gridSize * pos.z + vp.width / 2}px) translateY(${pos.y * gridSize * pos.z + vp.height / 2}px) scale(${pos.z})`;
   }
 
   function boxStyle(box: Box, scale: number = 1) {
@@ -164,82 +156,59 @@ function spaceStore(config: { centerAt: Box | null }) {
     `;
   }
 
-  const borderRadius = $derived((1 / zoom) * (zoom > 0.2 ? 6 : 4));
+  const borderRadius = $derived((1 / pos.z) * (pos.z > 0.2 ? 6 : 4));
 
-  return {
-    mountInit,
+  const commands = {
+    setZoom,
+    setViewport: (newVp: Viewport) => {
+      console.log("Setting viewport", newVp);
+      vp = newVp;
+    },
+    setZoomFromWheel: (delta: number) => {
+      setZoom(pos.z + delta * zoomStep, mouseX, mouseY);
+    },
+    setMouseXY(x: number, y: number) {
+      mouseX = x;
+      mouseY = y;
+    },
+    pan(deltaX: number, deltaY: number) {
+      if (deltaX || deltaY) {
+        pos.x = pos.x + deltaX / pos.z / gridSize;
+        pos.y = pos.y + deltaY / pos.z / gridSize;
+      }
+    },
     setMinZoomToFitBox,
     panZoomToFit,
+  };
+
+  return {
+    cmd: commands,
     transform,
     boxStyle,
+    get vp() {
+      return vp;
+    },
+    get vpEl() {
+      return vpEl;
+    },
+    set vpEl(v: HTMLDivElement) {
+      vpEl = v;
+    },
+    get vpBox() {
+      return vpBox;
+    },
     get boxBorderRadius() {
       return `border-radius: ${borderRadius}px;`;
     },
-    get width() {
-      return width;
-    },
-    get height() {
-      return height;
-    },
     grid: {
       size: gridSize,
-      get zSize() {
-        return zGridSize;
-      },
       toPx: (n: number) => n * gridSize,
       boxToPx,
     },
-    pos: {
-      get viewport() {
-        return viewport;
-      },
-      get z() {
-        return zoom;
-      },
-      get x() {
-        return panX;
-      },
-      get y() {
-        return panY;
-      },
-      get zx() {
-        return zPanX;
-      },
-      get zy() {
-        return zPanY;
-      },
-      get w() {
-        return width;
-      },
-      get h() {
-        return height;
-      },
-      get zw() {
-        return zWidth;
-      },
-      get zh() {
-        return zHeight;
-      },
-      setZoom,
-      setZoomFromWheel: (ev: WheelEvent, reverse: boolean = false) => {
-        setZoom(
-          zoom + ev.deltaY * zoomStep * (reverse ? -1 : 1),
-          ev.clientX,
-          ev.clientY
-        );
-      },
+    get pos() {
+      return pos;
     },
     mouse: {
-      setXY(x: number, y: number) {
-        mouseX = x;
-        mouseY = y;
-      },
-      pan(deltaX: number, deltaY: number) {
-        if (deltaX || deltaY) {
-          panX = panX + deltaX / zoom / gridSize;
-          panY = panY + deltaY / zoom / gridSize;
-        }
-      },
       get gridX() {
         return mouseGridX;
       },
@@ -256,7 +225,6 @@ function spaceStore(config: { centerAt: Box | null }) {
         return mouseBox;
       },
     },
-    screenToCanvasPos,
     mouseToGridPos,
   };
 }

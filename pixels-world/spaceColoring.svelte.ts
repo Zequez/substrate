@@ -1,5 +1,5 @@
-import thingsStore from "./things";
-import { type Box } from "../center/Frame";
+import thingsStore from "@stores/things";
+import { type Box } from "@center/Frame";
 
 export const PALLETTE = [
   null,

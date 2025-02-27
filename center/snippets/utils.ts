@@ -122,3 +122,11 @@ export function resolveScreenEdgePanning(
     return [0, 0];
   }
 }
+
+export function freezeDocumentSelectability(isFrozen: boolean) {
+  if (isFrozen) {
+    document.body.classList.add("select-none");
+  } else {
+    document.body.classList.remove("select-none");
+  }
+}

@@ -49,8 +49,8 @@
 
 <button
   aria-label={`Resize frame ${label}`}
-  class={`absolute pointer-events-auto ${boxClass} hover:bg-black/20 active:bg-black/10`}
-  style={`transform: ${boxScale}(${1 / S.pos.z})`}
+  class={`absolute pointer-events-auto ${boxClass} hover:bg-black/20 active:bg-gray-700 rounded-sm`}
+  style={`transform: ${boxScale}(${1 / S.pos.z});`}
   onmousedown={(ev) => props.onMouseDown(ev, props.pos)}
 >
 </button>

@@ -1,3 +1,5 @@
+import { getContext, onMount, setContext } from "svelte";
+
 import {
   type BoxedFrame,
   type Box,
@@ -13,14 +15,14 @@ import thingsStore, { type ThingWrapped } from "./things";
 import assets from "./assets.svelte";
 import profiles from "./profiles.svelte";
 import clients from "../center/clients";
-import spaceStore from "./space.svelte";
+import spaceStore, { type Viewport } from "./space.svelte";
 
 import spaceColoring, {
   filterByBox,
   minBoxForPixels,
   type Pixel,
   type PixelsFlat,
-} from "./spaceColoring.svelte";
+} from "../pixels-world/spaceColoring.svelte";
 import {
   bresenhamLine,
   resolveScreenEdgePanning,
@@ -47,7 +49,7 @@ export const MAIN_BUTTON = 0;
 export const ALT_BUTTON = 2;
 export const STATIC_PAN_TO_SELECT_DELAY = 399000;
 
-async function createStore() {
+function createStore() {
   const appEl = document.getElementById("app")!;
   // let canvasContainerEl = $state<HTMLDivElement>(null!);
 
@@ -85,7 +87,7 @@ async function createStore() {
   );
   const framesInViewport = $derived.by(() => {
     return frames.allFlat.filter((f) => {
-      return isTouching(ui.pos.viewport, f.value.box);
+      return isTouching(ui.vpBox, f.value.box);
     });
   });
   const closestFrame = (cx: number, cy: number, skip: UUID[]): UUID | null => {
@@ -136,19 +138,6 @@ async function createStore() {
   const ui = spaceStore({ centerAt: frame ? frame.value.box : null });
   let isOnGrid = $state(false);
 
-  // Coloring pixels stuff
-  let colorPixels = spaceColoring.createStore();
-  const colorPixelsInViewport: PixelsFlat[] = $derived.by(() => {
-    return colorPixels.pixels.filter(([x, y]) => {
-      const vp = ui.pos.viewport;
-      return x >= vp.x && x <= vp.x + vp.w && y >= vp.y && y <= vp.y + vp.h;
-    });
-  });
-  let artToolSelectedColor = $state<{
-    main: number;
-    alt: number;
-  }>({ main: 1, alt: 0 });
-
   // ██╗███╗   ██╗██╗████████╗
   // ██║████╗  ██║██║╚══██╔══╝
   // ██║██╔██╗ ██║██║   ██║
@@ -156,36 +145,35 @@ async function createStore() {
   // ██║██║ ╚████║██║   ██║
   // ╚═╝╚═╝  ╚═══╝╚═╝   ╚═╝
 
-  function mountInit() {
-    profiles.mountInit();
-    ui.mountInit();
+  profiles.mountInit();
 
-    $effect(() => {
-      if (fitAllBox) {
-        ui.setMinZoomToFitBox(fitAllBox);
-      }
-    });
+  $effect(() => {
+    if (fitAllBox) {
+      ui.cmd.setMinZoomToFitBox(fitAllBox);
+    }
+  });
 
-    // $effect(() => {
-    //   if (framesByDistance.length) {
-    //     focusedFrames = [framesByDistance[0]];
-    //   } else {
-    //     focusedFrames = [];
-    //   }
-    // });
+  // $effect(() => {
+  //   if (framesByDistance.length) {
+  //     focusedFrames = [framesByDistance[0]];
+  //   } else {
+  //     focusedFrames = [];
+  //   }
+  // });
 
+  onMount(() => {
     appEl.addEventListener("fullscreenchange", (ev) => {
       isInFullscreen = !!document.fullscreenElement;
     });
 
     window.addEventListener("keydown", (ev) => {
       if (ev.code === "Backspace" || ev.code === "Delete") {
-        if (pixelsSelected.length !== 0) {
-          for (let [x, y] of pixelsSelected) {
-            colorPixels.paint(x, y, 0);
-          }
-          colorPixels.commit();
-        }
+        // if (pixelsSelected.length !== 0) {
+        //   for (let [x, y] of pixelsSelected) {
+        //     colorPixels.paint(x, y, 0);
+        //   }
+        //   colorPixels.commit();
+        // }
         if (framesSelected.length !== 0) {
           for (let uuid of framesSelected) {
             frames.remove(uuid);
@@ -283,35 +271,35 @@ async function createStore() {
         // }
       }
     });
+  });
 
-    let timeoutId: any = null;
-    const panSize = (ui.grid.size * 2) / 1.5;
-    const edge = 10;
-    function processFullscreenEdgePanning() {
-      const [panX, panY] = resolveScreenEdgePanning(
-        edge,
-        ui.mouse.clientX,
-        ui.mouse.clientY,
-        ui.width,
-        ui.height
-      );
-      if (panX || panY) {
-        ui.mouse.pan(panX * panSize, panY * panSize);
-      }
-      timeoutId = setTimeout(processFullscreenEdgePanning, 25);
+  let timeoutId: any = null;
+  const panSize = (ui.grid.size * 2) / 1.5;
+  const edge = 10;
+  function processFullscreenEdgePanning() {
+    const [panX, panY] = resolveScreenEdgePanning(
+      edge,
+      ui.mouse.clientX,
+      ui.mouse.clientY,
+      ui.vp.width,
+      ui.vp.height
+    );
+    if (panX || panY) {
+      ui.cmd.pan(panX * panSize, panY * panSize);
     }
-
-    $effect(() => {
-      if (isInFullscreen) {
-        if (!timeoutId) {
-          processFullscreenEdgePanning();
-        }
-      } else {
-        clearTimeout(timeoutId);
-        timeoutId = null;
-      }
-    });
+    timeoutId = setTimeout(processFullscreenEdgePanning, 25);
   }
+
+  $effect(() => {
+    if (isInFullscreen) {
+      if (!timeoutId) {
+        processFullscreenEdgePanning();
+      }
+    } else {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+  });
 
   //  █████╗  ██████╗████████╗██╗ ██████╗ ███╗   ██╗███████╗
   // ██╔══██╗██╔════╝╚══██╔══╝██║██╔═══██╗████╗  ██║██╔════╝
@@ -328,7 +316,7 @@ async function createStore() {
         box: Box;
         boxNormalized: Box;
         touchingFrames: string[];
-        touchingPixels: PixelsFlat[];
+        // touchingPixels: PixelsFlat[];
         additive: boolean;
       }
     | {
@@ -411,7 +399,7 @@ async function createStore() {
               box: ui.mouse.box,
               boxNormalized: ui.mouse.box,
               touchingFrames: [],
-              touchingPixels: filterByBox(colorPixelsInViewport, ui.mouse.box),
+              // touchingPixels: filterByBox(colorPixelsInViewport, ui.mouse.box),
               additive: ev.shiftKey,
             };
             break;
@@ -428,29 +416,29 @@ async function createStore() {
             };
             break;
           }
-          case "art": {
-            const color =
-              ev.button === MAIN_BUTTON
-                ? artToolSelectedColor.main
-                : ev.button === ALT_BUTTON
-                  ? artToolSelectedColor.alt
-                  : null;
-            if (color !== null) {
-              const [x, y] = ui.mouseToGridPos(ev.clientX, ev.clientY);
-              dragState = {
-                type: "painting",
-                lastX: x,
-                lastY: y,
-                color,
-              };
-              colorPixels.paint(x, y, color);
-            }
-            break;
-          }
-          case "lightning": {
-            console.log("Lightning rod!");
-            break;
-          }
+          // case "art": {
+          //   const color =
+          //     ev.button === MAIN_BUTTON
+          //       ? artToolSelectedColor.main
+          //       : ev.button === ALT_BUTTON
+          //         ? artToolSelectedColor.alt
+          //         : null;
+          //   if (color !== null) {
+          //     const [x, y] = ui.mouseToGridPos(ev.clientX, ev.clientY);
+          //     dragState = {
+          //       type: "painting",
+          //       lastX: x,
+          //       lastY: y,
+          //       color,
+          //     };
+          //     colorPixels.paint(x, y, color);
+          //   }
+          //   break;
+          // }
+          // case "lightning": {
+          //   console.log("Lightning rod!");
+          //   break;
+          // }
         }
         break;
       case "frame": {
@@ -513,13 +501,13 @@ async function createStore() {
   /************************************** */
 
   function handleMouseMove(ev: MouseEvent, source: "container" | "trash") {
-    ui.mouse.setXY(ev.clientX, ev.clientY);
+    ui.cmd.setMouseXY(ev.clientX, ev.clientY);
 
     isOnGrid = source[0] === "container";
 
     switch (dragState.type) {
       case "panning":
-        ui.mouse.pan(ev.movementX, ev.movementY);
+        ui.cmd.pan(ev.movementX, ev.movementY);
         if (!dragState.panned) {
           dragState.panned = true;
           focusedFrames = [];
@@ -692,7 +680,7 @@ async function createStore() {
     ev.preventDefault();
 
     if (source[0] === "container") {
-      ui.pos.setZoomFromWheel(ev, reverseZoomDirection);
+      ui.cmd.setZoomFromWheel(ev.deltaY * (reverseZoomDirection ? -1 : 1));
     }
   }
 
@@ -712,9 +700,10 @@ async function createStore() {
     | ["frame", UUID, "pick-asset"]
     | ["frame", UUID, "remove-asset"]
     | ["frame", UUID, "expand"]
-    | ["frame", UUID, "remove"];
+    | ["frame", UUID, "remove"]
+    | ["set-viewport", Viewport];
 
-  async function processCommands(...cmd: Command) {
+  function processCommands(...cmd: Command) {
     switch (cmd[0]) {
       case "move-towards":
         {
@@ -725,13 +714,13 @@ async function createStore() {
             const xRatio = Math.cos(piDirection);
             const yRatio = Math.sin(piDirection);
 
-            ui.mouse.pan(xRatio * distance, yRatio * distance);
+            ui.cmd.pan(xRatio * distance, yRatio * distance);
           }
         }
         break;
       case "move-towards-xy":
         const [, dx, dy] = cmd;
-        ui.mouse.pan(dx, dx);
+        ui.cmd.pan(dx, dx);
         break;
       case "set-tool-to": {
         const [, toolType, boundTo] = cmd;
@@ -740,7 +729,7 @@ async function createStore() {
       }
       case "fit-all": {
         if (fitAllBox) {
-          ui.panZoomToFit(fitAllBox);
+          ui.cmd.panZoomToFit(fitAllBox);
         }
         break;
       }
@@ -757,7 +746,11 @@ async function createStore() {
         break;
       }
       case "reset-zoom": {
-        ui.pos.setZoom(1);
+        ui.cmd.setZoom(1);
+        break;
+      }
+      case "set-viewport": {
+        ui.cmd.setViewport(cmd[1]);
         break;
       }
       case "frame": {
@@ -789,12 +782,13 @@ async function createStore() {
             break;
           }
           case "pick-asset": {
-            const assetData = await assets.pickAsset();
-            if (assetData) {
-              frames.update(uuid, {
-                assetUrl: assetData.key,
-              });
-            }
+            assets.pickAsset().then((assetData) => {
+              if (assetData) {
+                frames.update(uuid, {
+                  assetUrl: assetData.key,
+                });
+              }
+            });
             break;
           }
           case "remove-asset": {
@@ -874,7 +868,6 @@ async function createStore() {
   //  ╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝ ╚══════╝
 
   return {
-    mountInit,
     get dragState() {
       return dragState;
     },
@@ -903,6 +896,9 @@ async function createStore() {
     ui,
     boxInPx: ui.grid.boxToPx,
     pos: ui.pos,
+    get vp() {
+      return ui.vp;
+    },
     grid: ui.grid,
     mouse: ui.mouse,
     resolveFrameBox,
@@ -924,12 +920,12 @@ async function createStore() {
     get isInFullscreen() {
       return isInFullscreen;
     },
-    get spaceColoring() {
-      return colorPixels;
-    },
-    get pixelsInViewport() {
-      return colorPixelsInViewport;
-    },
+    // get spaceColoring() {
+    //   return colorPixels;
+    // },
+    // get pixelsInViewport() {
+    //   return colorPixelsInViewport;
+    // },
     get framesSelected() {
       return framesSelected;
     },
@@ -942,9 +938,9 @@ async function createStore() {
     get tool() {
       return tool;
     },
-    get artToolSelectedColor() {
-      return artToolSelectedColor;
-    },
+    // get artToolSelectedColor() {
+    //   return artToolSelectedColor;
+    // },
     get poweredFrames() {
       return poweredFrames;
     },
@@ -954,13 +950,12 @@ async function createStore() {
   };
 }
 
-let store: Awaited<ReturnType<typeof createStore>>;
-
 export default {
-  initialize: async () => {
-    store = await createStore();
+  createStoreContext: () => {
+    const store = createStore();
+    setContext("main-store", store);
   },
   get store() {
-    return store;
+    return getContext("main-store") as ReturnType<typeof createStore>;
   },
 };

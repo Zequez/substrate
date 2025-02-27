@@ -20,16 +20,16 @@
   <button
     transition:fade={{ duration: 100 }}
     class={cx(
-      "h-20 w-20 z-100 absolute top-4 left-1/2 shadow-lg rounded-full -transform-x-1/2 absolute"
+      "h-20 w-20 z-100 absolute bottom-4 left-1/2 shadow-lg rounded-full -transform-x-1/2 absolute"
     )}
     onmousemove={onMouseMove}
     onmouseup={onMouseUp}
   >
     <div
       class={cx(
-        "flexcc bg-red-500 b-2 b-black/5 relative z-20 text-white transition-transform transform-origin-top-right transition-duration-200 text-2xl h-full w-full rounded-full ",
+        "flexcc bg-[rgb(87_64_14)] b-2 b-black/5 relative z-20 text-black/40 transition-property-[transform,color] transform-origin-top-right transition-duration-200 text-2xl h-full w-full rounded-full ",
         {
-          "scale-85! translate-x-[5px] -translate-y-[5px] skew-x-[8deg] skew-y-[8deg]":
+          "scale-85! translate-x-[5px] -translate-y-[5px] skew-x-[8deg] skew-y-[8deg] text-white":
             opened,
         }
       )}

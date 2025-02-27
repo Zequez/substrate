@@ -1,34 +1,67 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { cx } from "@center/snippets";
   import SS from "@stores/main.svelte";
+  import type { Viewport } from "@stores/space.svelte";
 
   const S = SS.store;
 
   const {
     children,
-    x,
-    y,
-    units,
-    z,
-    w,
-    h,
+    onViewportChange,
   }: {
     children: any;
-    x: number;
-    y: number;
-    units: number;
-    z: number;
-    w: number;
-    h: number;
+    onViewportChange: (vp: Viewport) => void;
   } = $props();
 
-  const transform = $derived(
-    `transform: translateX(${x * units * z + w / 2}px) translateY(${y * units * z + h / 2}px) scale(${z})`
-  );
+  const transform = $derived.by(() => {
+    const { x, y, z } = S.pos;
+    const { width: w, height: h } = S.vp;
+    const units = S.grid.size;
+    return `transform: translateX(${x * units * z + w / 2}px) translateY(${y * units * z + h / 2}px) scale(${z})`;
+  });
+
+  let el = $state<HTMLDivElement>(null!);
+
+  onMount(() => {
+    const resizeObserver = new ResizeObserver((entries) => {
+      triggerViewportChange();
+    });
+    resizeObserver.observe(el);
+
+    window.addEventListener("resize", triggerViewportChange);
+
+    function triggerViewportChange() {
+      const {
+        width,
+        height,
+        left: offsetX,
+        top: offsetY,
+      } = el.getBoundingClientRect();
+      const screenW = window.innerWidth;
+      const screenH = window.innerHeight;
+      onViewportChange({
+        width,
+        height,
+        offsetX,
+        offsetY,
+        screenW,
+        screenH,
+      });
+    }
+
+    triggerViewportChange();
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", triggerViewportChange);
+    };
+  });
 </script>
 
 <!-- bind:this={S.containerEl} -->
 <div
+  bind:this={el}
   onmouseup={S.ev.mouseup("container")}
   onmousemove={S.ev.mousemove("container")}
   onwheel={S.ev.wheel("container")}

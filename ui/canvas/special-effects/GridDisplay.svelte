@@ -21,6 +21,8 @@
     color: string;
   } = $props();
 
+  console.log("GRID", panX, panY, size, zoom, width, height);
+
   let el = $state<HTMLCanvasElement>(null!);
   let ctx = $derived(el ? el.getContext("2d")! : null!);
 

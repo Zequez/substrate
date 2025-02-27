@@ -5,7 +5,7 @@
     type PixelsFlat,
     PALLETTE,
     encodeXY,
-  } from "@stores/spaceColoring.svelte";
+  } from "./spaceColoring.svelte";
   const {
     pixels,
     buffer,

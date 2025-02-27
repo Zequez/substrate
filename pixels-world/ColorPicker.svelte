@@ -1,6 +1,6 @@
 <script lang="ts">
   import { c } from "@center/snippets";
-  import { PALLETTE } from "@stores/spaceColoring.svelte";
+  import { PALLETTE } from "./spaceColoring.svelte";
 
   const {
     onPickMain,

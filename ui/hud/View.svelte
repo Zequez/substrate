@@ -31,17 +31,13 @@
 <div class="absolute top-2 left-2 z-hud-zoom flex space-x-2">
   {#if !S.expandedFrame}
     {#if S.pos.z !== 1}
-      {@render cornerButton(
-        `${Math.round(S.pos.z * 100)}%`,
-        "Reset zoom",
-        S.ev.resetZoom
+      {@render cornerButton(`${Math.round(S.pos.z * 100)}%`, "Reset zoom", () =>
+        S.cmd("reset-zoom")
       )}
     {/if}
     {#if Object.keys(S.frames).length}
-      {@render cornerButton(
-        SquareIcon,
-        "Fit all frames on the viewport",
-        (ev) => S.ev.mousedown(ev, ["fit-all"])
+      {@render cornerButton(SquareIcon, "Fit all frames on the viewport", () =>
+        S.cmd("fit-all")
       )}
     {/if}
   {/if}
@@ -49,13 +45,13 @@
     {@render cornerButton(
       S.isInFullscreen ? CompressIcon : ExpandIcon,
       "Enter fullscreen mode",
-      (ev) => S.ev.mousedown(ev, ["toggle-fullscreen"])
+      () => S.cmd("toggle-fullscreen")
     )}
   {/if}
 
   {#if S.expandedFrame}
-    {@render cornerButton(CompressIcon, "Exit expanded frame", (ev) =>
-      S.ev.mousedown(ev, ["expand-frame", null])
+    {@render cornerButton(CompressIcon, "Exit expanded frame", () =>
+      S.cmd("exit-expanded-frame")
     )}
   {/if}
 </div>
