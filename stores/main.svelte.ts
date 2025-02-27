@@ -13,7 +13,6 @@ import {
 // Sub-states
 import thingsStore, { type ThingWrapped } from "./things";
 import assets from "./assets.svelte";
-import profiles from "./profiles.svelte";
 import clients from "../center/clients";
 import spaceStore, { type Viewport } from "./space.svelte";
 
@@ -148,8 +147,6 @@ function createStore(storeConfig: StoreConfig) {
   // ██║██║╚██╗██║██║   ██║
   // ██║██║ ╚████║██║   ██║
   // ╚═╝╚═╝  ╚═══╝╚═╝   ╚═╝
-
-  profiles.mountInit();
 
   $effect(() => {
     if (fitAllBox) {
@@ -706,7 +703,8 @@ function createStore(storeConfig: StoreConfig) {
     | ["frame", UUID, "remove-asset"]
     | ["frame", UUID, "expand"]
     | ["frame", UUID, "remove"]
-    | ["set-viewport", Viewport];
+    | ["set-viewport", Viewport]
+    | ["center"];
 
   function processCommands(...cmd: Command) {
     switch (cmd[0]) {
@@ -756,6 +754,10 @@ function createStore(storeConfig: StoreConfig) {
       }
       case "set-viewport": {
         ui.cmd.setViewport(cmd[1]);
+        break;
+      }
+      case "center": {
+        ui.cmd.panTo(0, 0);
         break;
       }
       case "frame": {

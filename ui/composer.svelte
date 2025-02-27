@@ -14,7 +14,7 @@
   import Frame from "./canvas/frames/Frame.svelte";
 
   import WASDSpeedControl from "./WASDSpeedControl";
-  import { freezeDocumentSelectability } from "@center/snippets";
+  import { cx, freezeDocumentSelectability } from "@center/snippets";
   import type { Pos } from "@stores/space.svelte";
 
   const props: { depth?: number; parentPos?: Pos; style?: string } = $props();
@@ -35,14 +35,26 @@
 <!-- <GenericDnaSandbox H={genericZomeClient} /> -->
 <!-- <BunchNavigation /> -->
 
-<div class="bg-[hsl(83,_53%,_27%)] size-full relative" style={props.style}>
+<!-- <div
+  class="absolute bg-black rounded-md z-1000 text-white top-0 right-0 px1 text-xs font-mono"
+  style={`transform: translate(${-S.vp.renderedWidth + S.mouse.clientX}px, ${S.mouse.clientY - 20}px)`}
+>
+  {S.mouse.gridX}, {S.mouse.gridY}
+</div> -->
+
+<div
+  class={cx("bg-[hsl(83,_53%,_27%)] size-full relative size-full", {})}
+  style={`${props.style || ""};`}
+>
   <!-- <div class="absolute top-0 left-0 bg-black text-white z-1000">
     {JSON.stringify(S.pos)}
   </div> -->
   <!-- HUD -->
-  <ToolsHud
-    onClickTool={(tool, boundTo) => S.cmd("set-tool-to", tool, boundTo)}
-  />
+  {#if !S.expandedFrame}
+    <ToolsHud
+      onClickTool={(tool, boundTo) => S.cmd("set-tool-to", tool, boundTo)}
+    />
+  {/if}
   {#if props.depth === 0}
     <PeopleHud />
   {/if}
@@ -52,11 +64,13 @@
     show={S.dragState.type === "movingFrames"}
     opened={S.dragState.type === "movingFrames" && S.dragState.trashing}
   />
-  <ViewHud />
+  <ViewHud depth={props.depth || 0} />
 
   <!-- SPECIAL EFFECts -->
 
-  <GridDisplay pos={S.pos} vp={S.vp} size={S.grid.size} color="#fff" />
+  {#if !S.expandedFrame}
+    <GridDisplay pos={S.pos} vp={S.vp} size={S.grid.size} color="#fff" />
+  {/if}
 
   <!-- CANVAS -->
 
@@ -65,7 +79,7 @@
     onViewportChange={(vp) => S.cmd("set-viewport", vp)}
     parentPos={props.parentPos || { x: 0, y: 0, z: 1 }}
   >
-    <!-- <GridBox box={{ h: 10, w: 10, x: 0, y: 0 }} visual="bg-white" /> -->
+    <!-- <GridBox box={{ h: 10, w: 10, x: 0, y: 0 }} cx="bg-white" /> -->
 
     {#if S.dragState.type === "selecting"}
       <GridBox

@@ -18,7 +18,8 @@
 
 {#if show}
   <button
-    transition:fade={{ duration: 100 }}
+    in:fade={{ duration: 100, delay: 250 }}
+    out:fade={{ duration: 100, delay: 0 }}
     class={cx(
       "h-20 w-20 z-100 absolute bottom-4 left-1/2 shadow-lg rounded-full -transform-x-1/2 absolute"
     )}
@@ -27,9 +28,9 @@
   >
     <div
       class={cx(
-        "flexcc bg-[rgb(87_64_14)] b-2 b-black/5 relative z-20 text-black/40 transition-property-[transform,color] transform-origin-top-right transition-duration-200 text-2xl h-full w-full rounded-full ",
+        "flexcc bg-[rgb(87_64_14)] b-2 b-black/5 relative z-20 text-white/80 transition-property-[transform,color] transform-origin-top-right transition-duration-200 text-2xl h-full w-full rounded-full ",
         {
-          "scale-85! translate-x-[5px] -translate-y-[5px] skew-x-[8deg] skew-y-[8deg] text-white":
+          "scale-85! translate-x-[5px] -translate-y-[5px] skew-x-[8deg] skew-y-[8deg] text-white/100":
             opened,
         }
       )}

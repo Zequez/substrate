@@ -49,21 +49,6 @@ export function maybeReadLS<T>(key: string, defaultValue: T): T {
   }
 }
 
-const oldStyles = new Map<HTMLElement, string>();
-export function stickyStyle(node: HTMLElement, style: string) {
-  let oldStyle = node.style.cssText;
-  oldStyles.set(node, oldStyle);
-  node.style.cssText = oldStyle + style;
-
-  return {
-    update(newStyle: string) {
-      if (newStyle) {
-        node.style.cssText = oldStyles.get(node) + newStyle;
-      }
-    },
-  };
-}
-
 // Return all grid positions in between 2 positions on a line
 export function bresenhamLine(
   x0: number,

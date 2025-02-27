@@ -1,7 +1,8 @@
 <script lang="ts">
   import cx from "classnames";
+  import ExpandIcon from "~icons/fa6-solid/expand";
 
-  import { c, stickyStyle } from "@center/snippets";
+  import { c } from "@center/snippets";
 
   import type { BoxedFrameWrapped } from "@stores/main.svelte";
   import SS from "@stores/main.svelte";
@@ -36,6 +37,7 @@
       A.trashing
   );
   const isExpanded = $derived(S.expandedFrame === uuid);
+
   const isSelected = $derived(
     A.type === "selecting"
       ? A.touchingFrames.indexOf(uuid) !== -1
@@ -47,11 +49,13 @@
   // const hasStartedDragging = $derived(S.dragState )
 
   const boxStyle = $derived(S.ui.boxStyle(box));
-  const transformOriginStyle = $derived(
-    A.type === "movingFrames"
-      ? `transform-origin: ${A.pickX * 100}% ${A.pickY * 100}%`
-      : ""
-  );
+  let transformOriginStyle = $state("");
+
+  $effect(() => {
+    if (A.type === "movingFrames") {
+      transformOriginStyle = `transform-origin: ${A.pickX * 100}% ${A.pickY * 100}%`;
+    }
+  });
 
   let wasExpanded = $state<boolean>(false);
 
@@ -73,81 +77,8 @@
     else if (isMoving) return "z-moving-frame";
     else return "z-frame";
   }
-
-  const shadowStyles = {
-    fixed: "0px 0px 2px 3px #0003",
-    hovering: "0px 0px 2px 3px #0002, 0px 0px 10px 3px #0005",
-    fixedPowered: "0px 0px 5px 5px #dd0f",
-    hoveringPowered: "0px 0px 5px 5px #dd0f",
-  };
-  const shadowStyle = $derived.by(() => {
-    if (isPowered)
-      return isMoving
-        ? shadowStyles.hoveringPowered
-        : shadowStyles.fixedPowered;
-    return isMoving ? shadowStyles.hovering : shadowStyles.fixed;
-  });
-
-  let didMouseUp = $state<boolean>(false);
-  let didDblClick = $state<boolean>(false);
-
-  function handleDblClick(ev: MouseEvent) {
-    didDblClick = true;
-    // S.ev.dblClick(ev, ["power-up", uuid]);
-    // S.cmd('frame', 'power-up', uuid);
-  }
-
-  function handleMouseUp(ev: MouseEvent) {
-    didMouseUp = true;
-  }
-
-  function handleMouseDown(ev: MouseEvent) {
-    // S.ev.mousedown('frame', uuid, 'drag-handle')
-    // S.ev.mousedown('frame', uuid, 'resize-handle')
-    // ev.stopPropagation();
-    // didDblClick = false;
-    // didMouseUp = false;
-    // setTimeout(() => {
-    //   if (!didDblClick && !didMouseUp) {
-    //     S.ev.mousedown(ev, ["frame", isSelected ? null : [uuid]]);
-    //   }
-    //   if (!didDblClick && didMouseUp) {
-    //     S.ev.click(ev, ["focus-frame", uuid]);
-    //   }
-    // }, 200);
-  }
 </script>
 
-<!-- Frame is not contained within a single element,
- but is made of of multiple layers on the same shared scope of other frames -->
-<!-- This allow us, for example to have a z-index for shadows that is below all frames -->
-
-<!-- Shadow frame element -->
-<!-- <div
-  class={cx("absolute top-0 left-0 will-change-transform", {
-    "z-frame-shadow": !isMoving,
-    "duration-150 transition-property-[transform,width,height]":
-      !isMoving && !isResizing && !wasExpanded && !isExpanded,
-    "z-moving-frame-shadow transition-none": isMoving,
-  })}
-  style={isExpanded ? "" : boxStyle}
->
-  <div
-    use:stickyStyle={transformOriginStyle}
-    use:c={[
-      "size-full",
-      "duration-150 transition-property-[transform,opacity,box-shadow]",
-      {
-        "scale-50": isTrashing,
-        "scale-100": !isMoving,
-        // "scale-102": isMoving && !isTrashing,
-      },
-    ]}
-    style={S.ui.boxBorderRadius + `box-shadow: ${shadowStyle};`}
-  ></div>
-</div> -->
-
-<!-- Solid frame element z-40 -->
 <div
   use:c={[
     "absolute top-0 left-0 will-change-transform",
@@ -162,8 +93,7 @@
 >
   <!-- The nested transformation here allows us to shrink the frame when trashing it -->
   <div
-    style={isExpanded ? "" : S.ui.boxBorderRadius}
-    use:stickyStyle={transformOriginStyle}
+    style={(isExpanded ? "" : S.ui.boxBorderRadius) + transformOriginStyle}
     use:c={[
       "size-full flex flex-col",
       "duration-150 transition-transform outline-solid outline-1 outline-black/10",
@@ -174,7 +104,7 @@
         "b-4 b-yellow-500 bg-yellow-300": isPowered && !isExpanded,
         "b-4 b-[hsl(215,_70%,_57%)] bg-[hsl(215,_70%,_57%)]":
           isSelected && !isExpanded,
-        "b-0": isExpanded,
+        "b-0!": isExpanded,
         "cursor-default": !isMoving,
         "cursor-grabbing": isMoving,
       },
@@ -186,12 +116,17 @@
     <div
       class="flex flex-grow flex-col shadow-[0_0_2px_#0002] rounded-[0.250rem]"
     >
-      <div
-        class="w-full b-b b-gray-200 bg-gradient-to-b from-gray-50 to-gray-100 rounded-t-[0.250rem] px1 cursor-move shadow-[inset_0px_1px_0px_0px_#fff2]"
-        style="height: {S.grid.size - 4}px;"
-      >
-        Hey
-      </div>
+      {#if !isExpanded}
+        <div
+          class="w-full flex b-b b-gray-200 bg-gradient-to-b from-gray-50 to-gray-100 rounded-t-[0.250rem] px1 cursor-move shadow-[inset_0px_1px_0px_0px_#fff2]"
+          style="height: {S.grid.size - 4}px;"
+        >
+          <div class="flex-grow">{JSON.stringify(frame.box)}</div>
+          <button onmousedown={() => S.cmd("frame", uuid, "expand")}>
+            <ExpandIcon />
+          </button>
+        </div>
+      {/if}
       <div
         class="flex-grow bg-white rounded-b-[0.250rem] relative overflow-hidden"
       >
@@ -204,10 +139,16 @@
         {:else if S.storeConfig.depth === 0}
           <div
             class="w-full h-full transform-origin-tl"
-            style="transform: scale({1 / S.pos.z}); width: {100 *
-              S.pos.z}%; height: {100 * S.pos.z}%;"
+            style={!isExpanded
+              ? `transform: scale(${1 / S.pos.z}); width: ${
+                  100 * S.pos.z
+                }%; height: ${100 * S.pos.z}%;`
+              : ""}
           >
-            <Substrate parentPos={S.pos} depth={S.storeConfig.depth + 1} />
+            <Substrate
+              parentPos={isExpanded ? { x: 0, y: 0, z: 1 } : S.pos}
+              depth={S.storeConfig.depth + 1}
+            />
           </div>
         {:else}
           Too deep
@@ -218,25 +159,6 @@
     <!-- <FrameContent {frame} {uuid} powered={isPowered} /> -->
   </div>
 </div>
-
-<!-- {#if isSelected}
-  <div
-    class="size-full bg-blue-500/50 absolute z-150 cursor-move"
-    style="{boxStyle}; {S.ui.boxBorderRadius}"
-  ></div>
-{/if} -->
-
-<!-- {#if isSelected}
-  <div class="absolute" style={boxStyle}>
-    <div
-      class={`absolute -inset-4 z-focus-indicator pointer-events-none
-        bg-green-500/30 rounded-lg b-dashed b-green-500/50
-
-          `}
-      style="{S.ui.boxBorderRadius}; border-width: {3 / S.pos.z}px;"
-    ></div>
-  </div>
-{/if} -->
 
 {#if validBox}
   <GridBox box={validBox} cx={"bg-sky-500/10 b-sky-500/60"} />

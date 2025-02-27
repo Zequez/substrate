@@ -1,6 +1,6 @@
 <script lang="ts">
   import cx from "classnames";
-  import profiles from "@stores/profiles.svelte";
+  import profiles from "@center/profiles.svelte";
   import clients from "@center/clients";
   import { tooltip } from "@center/snippets/tooltip";
 
@@ -15,7 +15,7 @@
   });
 </script>
 
-<div class="absolute top-2 right-2 z-hud flexcc space-x-2">
+<div class="absolute bottom-2 left-2 z-hud flexcc space-x-2">
   {#each sortedProfiles as [agent, profile]}
     {@const isSelf = agent === clients.agentKeyB64}
     {#if profile === "unknown" || profile === "none" || !profile.fields.avatar}

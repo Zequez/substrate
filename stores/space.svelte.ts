@@ -43,7 +43,7 @@ function spaceStore(config: { centerAt: Box | null }) {
   });
   let vpEl = $state<HTMLDivElement>(null!);
 
-  const zoomPanLSKey = "ZPXPY";
+  const zoomPanLSKey = "pos";
 
   const initialPos: Pos = (() => {
     if (config.centerAt) {
@@ -122,14 +122,12 @@ function spaceStore(config: { centerAt: Box | null }) {
   function setZoom(newZoom: number, clientX?: number, clientY?: number) {
     if (!clientX) clientX = vp.width / 2 + vp.offsetX;
     if (!clientY) clientY = vp.height / 2 + vp.offsetY;
-    console.log("Setting zoom", clientX, clientY);
     let processedZoom = newZoom;
     if (newZoom < minZoom) processedZoom = minZoom;
     if (newZoom > maxZoom) processedZoom = maxZoom;
     const zoomDelta = 1 - processedZoom / pos.z;
     if (zoomDelta !== 0) {
       const canvasPos = screenToCanvasPos(clientX, clientY);
-      console.log("Canvas POS", canvasPos);
       pos.x += (canvasPos[0] * zoomDelta) / processedZoom / gridSize;
       pos.y += (canvasPos[1] * zoomDelta) / processedZoom / gridSize;
     }
@@ -147,8 +145,8 @@ function spaceStore(config: { centerAt: Box | null }) {
   function panZoomToFit(box: Box) {
     const w = (box.w + 5) * gridSize;
     const h = (box.h + 5) * gridSize;
-    const zoomForW = vp.width / w;
-    const zoomForH = vp.height / h;
+    const zoomForW = vp.renderedWidth / w;
+    const zoomForH = vp.renderedHeight / h;
     const newZoom = Math.min(zoomForW, zoomForH, 0.5);
     pos.z = newZoom;
     const newPanX = box.x + box.w / 2 + 2.5 - (vp.width * pos.z) / gridSize / 2;
@@ -158,10 +156,10 @@ function spaceStore(config: { centerAt: Box | null }) {
     pos.y = -newPanY;
   }
 
-  function transform() {
-    // return `transform: translateX(${(pos.x * gridSize * pos.z) / vp.scaled + vp.width / 2}px) translateY(${(pos.y * gridSize * pos.z) / vp.scaled + vp.height / 2}px) scale(${pos.z})`;
-    return `transform: translateX(0px) translateY(0px) scale(${pos.z})`;
-  }
+  // function transform() {
+  //   return `transform: translateX(${(pos.x * gridSize * pos.z) / vp.scaled + vp.width / 2}px) translateY(${(pos.y * gridSize * pos.z) / vp.scaled + vp.height / 2}px) scale(${pos.z})`;
+  //   // return `transform: translateX(0px) translateY(0px) scale(${pos.z})`;
+  // }
 
   function boxStyle(box: Box, scale: number = 1) {
     const pxBox = boxToPx(box);
@@ -177,7 +175,6 @@ function spaceStore(config: { centerAt: Box | null }) {
   const commands = {
     setZoom,
     setViewport: (newVp: Viewport) => {
-      console.log("Setting viewport", newVp);
       vp = newVp;
     },
     setZoomFromWheel: (delta: number) => {
@@ -193,13 +190,17 @@ function spaceStore(config: { centerAt: Box | null }) {
         pos.y = pos.y + deltaY / pos.z / gridSize;
       }
     },
+    panTo(x: number, y: number) {
+      pos.x = x;
+      pos.y = y;
+    },
     setMinZoomToFitBox,
     panZoomToFit,
   };
 
   return {
     cmd: commands,
-    transform,
+    // transform,
     boxStyle,
     get vp() {
       return vp;

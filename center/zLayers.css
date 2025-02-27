@@ -5,15 +5,15 @@
 
 .z-frames-container { z-index: 40; }
 
-  .z-expanded-frame { z-index: 81; }
-  .z-canvas-top { z-index: 72; }
-  .z-frame-resize-handles { z-index: 70; }
-  .z-focused-frame { z-index: 63; }
-  .z-moving-frame { z-index: 62; }
-  .z-moving-frame-shadow { z-index: 61; }
-  .z-frame { z-index: 60; }
-  .z-focus-indicator { z-index: 51; }
-  .z-frame-shadow { z-index: 50; }
-  .z-ghostbox { z-index: 30; }
+.z-expanded-frame { z-index: 81!important; }
+.z-canvas-top { z-index: 72; }
+.z-frame-resize-handles { z-index: 70; }
+.z-focused-frame { z-index: 63; }
+.z-moving-frame { z-index: 62; }
+.z-moving-frame-shadow { z-index: 61; }
+.z-frame { z-index: 60; }
+.z-focus-indicator { z-index: 51; }
+.z-frame-shadow { z-index: 50; }
+.z-ghostbox { z-index: 30; }
 
 .z-grid { z-index: 10; }

@@ -16,8 +16,6 @@
     onViewportChange: (vp: Viewport) => void;
   } = $props();
 
-  console.log("PARENT POSSSS", parentPos);
-
   $effect(() => {
     parentPos.x, parentPos.y, parentPos.z;
     triggerViewportChange();
@@ -25,15 +23,13 @@
 
   const transform = $derived.by(() => {
     const { x, y, z } = S.pos;
-    const { width: w, height: h } = S.vp;
     const units = S.grid.size;
-    return `transform: translateX(${x * units * z + S.vp.renderedWidth / 2}px) translateY(${y * units * z + S.vp.renderedHeight / 2}px) scale(${z})`;
+    return `transform: translateX(${(x * units + S.vp.renderedWidth / 2) * z}px) translateY(${(y * units + S.vp.renderedHeight / 2) * z}px) scale(${z})`;
   });
 
   let el = $state<HTMLDivElement>(null!);
 
   function triggerViewportChange() {
-    console.log("Viewport changing", parentPos);
     const {
       width,
       height,
@@ -44,17 +40,19 @@
     const screenW = window.innerWidth;
     const screenH = window.innerHeight;
 
-    onViewportChange({
-      width: width / parentPos.z,
-      height: height / parentPos.z,
-      renderedWidth: width,
-      renderedHeight: height,
-      offsetX,
-      offsetY,
-      screenW,
-      screenH,
-      scaled: parentPos.z,
-    });
+    if (parentPos.z) {
+      onViewportChange({
+        width: width / parentPos.z,
+        height: height / parentPos.z,
+        renderedWidth: width,
+        renderedHeight: height,
+        offsetX,
+        offsetY,
+        screenW,
+        screenH,
+        scaled: parentPos.z,
+      });
+    }
   }
 
   onMount(() => {
@@ -83,18 +81,20 @@
   onmousedown={S.ev.containerMouseDown}
   oncontextmenu={(ev) => ev.preventDefault()}
   role="presentation"
-  class={cx("absolute inset-0 overflow-hidden", {
+  class={cx("absolute inset-0 overflow-hidden ", {
     "cursor-grabbing":
       S.dragState.type === "panning" || S.dragState.type === "movingFrames",
   })}
 >
   <!-- This centers the grid so that 0,0 is in the middle of the screen -->
   <div
-    class={cx("absolute top-0 left-0 will-change-transform", {
+    class={cx("absolute top-0 left-0 size-full will-change-transform", {
       "z-frames-container": !S.expandedFrame,
     })}
     style={S.expandedFrame ? "" : transform}
   >
-    {@render children?.()}
+    {#if S.vp.width && S.vp.height}
+      {@render children?.()}
+    {/if}
   </div>
 </div>

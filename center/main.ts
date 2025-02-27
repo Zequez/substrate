@@ -9,6 +9,7 @@ import App from "@ui/composer.svelte";
 import S from "@stores/main.svelte";
 
 import clients from "./clients";
+import profiles from "./profiles.svelte";
 
 import type {
   AppletHash,
@@ -47,6 +48,7 @@ import { type AppClient } from "@holochain/client";
   };
 
   await clients.connect(appletServices);
+  await profiles.connect();
 
   mount(App, {
     target: document.getElementById("app")!,
