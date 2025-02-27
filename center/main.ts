@@ -50,6 +50,6 @@ import { type AppClient } from "@holochain/client";
 
   mount(App, {
     target: document.getElementById("app")!,
-    props: {},
+    props: { depth: 0 },
   });
 })();

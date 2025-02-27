@@ -1,12 +1,12 @@
 .z-tooltips { z-index: 130; }
 .z-hud-zoom {z-index: 85 }
 .z-hud { z-index: 80; }
+.z-selection-box { z-index: 73; }
 
 .z-frames-container { z-index: 40; }
 
   .z-expanded-frame { z-index: 81; }
   .z-canvas-top { z-index: 72; }
-  .z-selection-box { z-index: 71; }
   .z-frame-resize-handles { z-index: 70; }
   .z-focused-frame { z-index: 63; }
   .z-moving-frame { z-index: 62; }

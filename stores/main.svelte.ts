@@ -49,7 +49,11 @@ export const MAIN_BUTTON = 0;
 export const ALT_BUTTON = 2;
 export const STATIC_PAN_TO_SELECT_DELAY = 399000;
 
-function createStore() {
+type StoreConfig = {
+  depth: number;
+};
+
+function createStore(storeConfig: StoreConfig) {
   const appEl = document.getElementById("app")!;
   // let canvasContainerEl = $state<HTMLDivElement>(null!);
 
@@ -678,6 +682,7 @@ function createStore() {
 
   function handleWheel(ev: WheelEvent, source: ["container"]) {
     ev.preventDefault();
+    ev.stopPropagation();
 
     if (source[0] === "container") {
       ui.cmd.setZoomFromWheel(ev.deltaY * (reverseZoomDirection ? -1 : 1));
@@ -947,12 +952,13 @@ function createStore() {
     get focusedFrames() {
       return focusedFrames;
     },
+    storeConfig,
   };
 }
 
 export default {
-  createStoreContext: () => {
-    const store = createStore();
+  createStoreContext: (storeConfig: StoreConfig) => {
+    const store = createStore(storeConfig);
     setContext("main-store", store);
   },
   get store() {

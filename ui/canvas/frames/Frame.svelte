@@ -7,6 +7,8 @@
   import SS from "@stores/main.svelte";
   import assets from "@stores/assets.svelte";
 
+  import Substrate from "../../composer.svelte";
+
   import FrameInteracting from "./FrameInteracting.svelte";
   import FrameEmbed from "./FrameEmbed.svelte";
   import FrameAssetInfo from "./FrameAssetInfo.svelte";
@@ -163,16 +165,14 @@
     style={isExpanded ? "" : S.ui.boxBorderRadius}
     use:stickyStyle={transformOriginStyle}
     use:c={[
-      "size-full",
-      "duration-150 transition-transform",
+      "size-full flex flex-col",
+      "duration-150 transition-transform outline-solid outline-1 outline-black/10",
       {
         "scale-50 opacity-30": isTrashing,
         // "scale-102 opacity-100": isMoving && !isTrashing,
-        "bg-gray-100 b-4 b-gray-300 shadow-[inset_0px_0px_1px_0px_#0003]":
-          !isPowered && !isSelected,
-        "bg-gray-100 b-4 b-yellow-500 shadow-[inset_0px_0px_1px_0px_#0003]":
-          isPowered && !isExpanded,
-        "bg-gray-100 b-4 b-blue-500 shadow-[inset_0px_0px_1px_0px_#0003]":
+        "b-4 b-gray-300 bg-gray-300": !isPowered && !isSelected,
+        "b-4 b-yellow-500 bg-yellow-300": isPowered && !isExpanded,
+        "b-4 b-[hsl(215,_70%,_57%)] bg-[hsl(215,_70%,_57%)]":
           isSelected && !isExpanded,
         "b-0": isExpanded,
         "cursor-default": !isMoving,
@@ -183,15 +183,29 @@
     tabindex="-1"
     onmousedown={S.ev.mousedown("frame", uuid, "drag-handle")}
   >
-    {#if frame.assetUrl && asset}
-      {#if isPowered}
-        <FrameEmbed {asset} />
-      {:else}
-        <FrameAssetInfo {asset} />
-      {/if}
-    {:else}
-      {uuid}
-    {/if}
+    <div
+      class="flex flex-grow flex-col shadow-[0_0_2px_#0002] rounded-[0.250rem]"
+    >
+      <div
+        class="w-full b-b b-gray-200 bg-gradient-to-b from-gray-50 to-gray-100 rounded-t-[0.250rem] px1 cursor-move shadow-[inset_0px_1px_0px_0px_#fff2]"
+        style="height: {S.grid.size - 4}px;"
+      >
+        Hey
+      </div>
+      <div class="flex-grow bg-white rounded-b-[0.250rem] relative">
+        {#if frame.assetUrl && asset}
+          {#if isPowered}
+            <FrameEmbed {asset} />
+          {:else}
+            <FrameAssetInfo {asset} />
+          {/if}
+        {:else if S.storeConfig.depth === 0}
+          <Substrate depth={S.storeConfig.depth + 1} />
+        {:else}
+          Too deep
+        {/if}
+      </div>
+    </div>
 
     <!-- <FrameContent {frame} {uuid} powered={isPowered} /> -->
   </div>
