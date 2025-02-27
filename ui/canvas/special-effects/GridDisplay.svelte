@@ -1,27 +1,22 @@
 <script lang="ts">
   import SS from "@stores/main.svelte";
+  import type { Pos, Viewport } from "@stores/space.svelte";
 
   const S = SS.store;
 
   const {
-    x: panX,
-    y: panY,
-    units: size,
-    z: zoom,
-    w: width,
-    h: height,
+    pos,
+    vp,
+    size,
     color,
   }: {
-    x: number;
-    y: number;
-    units: number;
-    z: number;
-    w: number;
-    h: number;
+    pos: Pos;
+    vp: Viewport;
+    size: number;
     color: string;
   } = $props();
 
-  console.log("GRID", panX, panY, size, zoom, width, height);
+  console.log("GRID", pos, vp, size);
 
   let el = $state<HTMLCanvasElement>(null!);
   let ctx = $derived(el ? el.getContext("2d")! : null!);
@@ -29,15 +24,15 @@
   let prevWidth = 0;
   let prevHeight = 0;
   $effect(() => {
-    if (width !== prevWidth || height !== prevHeight) {
-      el.width = width;
-      el.height = height;
+    if (vp.width !== prevWidth || vp.height !== prevHeight) {
+      el.width = vp.width;
+      el.height = vp.height;
     }
-    if (ctx && width > 0 && height > 0) {
+    if (ctx && vp.width > 0 && vp.height > 0) {
       renderGrid();
     }
-    prevHeight = height;
-    prevWidth = width;
+    prevHeight = vp.height;
+    prevWidth = vp.width;
   });
 
   function renderGrid() {
@@ -46,17 +41,17 @@
     const bgColor = color + "2";
 
     // const gridSize = (zoom > 1 ? 15 : zoom === 0.5 ? 60 : 30) * zoom;
-    const gridSize = size * zoom;
+    const gridSize = (size * pos.z) / vp.scaled;
 
-    const physicalPanX = panX * size * zoom + width / 2;
-    const physicalPanY = panY * size * zoom + height / 2;
+    const physicalPanX = pos.x * gridSize + vp.width / 2 + 0;
+    const physicalPanY = pos.y * gridSize + vp.height / 2 + 0;
 
     // Clear the canvas
-    ctx.clearRect(0, 0, width, height);
+    ctx.clearRect(0, 0, vp.width, vp.height);
 
-    if (zoom <= 0.08) {
+    if (pos.z <= 0.08) {
       ctx.fillStyle = bgColor;
-      ctx.fillRect(0, 0, width, height);
+      ctx.fillRect(0, 0, vp.width, vp.height);
     } else {
       // Draw the grid
       ctx.strokeStyle = lineColor;
@@ -70,18 +65,18 @@
       );
 
       // Vertical lines
-      for (let x = 0; x <= width + gridSize; x += gridSize) {
+      for (let x = 0; x <= vp.width + gridSize; x += gridSize) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
-        ctx.lineTo(x, height + gridSize * 2);
+        ctx.lineTo(x, vp.height + gridSize * 2);
         ctx.stroke();
       }
 
       // Horizontal lines
-      for (let y = 0; y <= height + gridSize * 2; y += gridSize) {
+      for (let y = 0; y <= vp.height + gridSize * 2; y += gridSize) {
         ctx.beginPath();
         ctx.moveTo(0, y);
-        ctx.lineTo(width + gridSize, y);
+        ctx.lineTo(vp.width + gridSize, y);
         ctx.stroke();
       }
 
@@ -93,19 +88,19 @@
 
     // Center lines
 
-    if (physicalPanX > 0 && physicalPanX < width) {
+    if (physicalPanX > 0 && physicalPanX < vp.width) {
       const centerX = physicalPanX;
       ctx.beginPath();
       ctx.moveTo(centerX, 0);
-      ctx.lineTo(centerX, height);
+      ctx.lineTo(centerX, vp.height);
       ctx.stroke();
     }
 
-    if (physicalPanY > 0 && physicalPanY < height) {
+    if (physicalPanY > 0 && physicalPanY < vp.height) {
       const centerY = physicalPanY;
       ctx.beginPath();
       ctx.moveTo(0, centerY);
-      ctx.lineTo(width, centerY);
+      ctx.lineTo(vp.width, centerY);
       ctx.stroke();
     }
   }

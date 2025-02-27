@@ -2,26 +2,60 @@
   import { onMount } from "svelte";
   import { cx } from "@center/snippets";
   import SS from "@stores/main.svelte";
-  import type { Viewport } from "@stores/space.svelte";
+  import type { Pos, Viewport } from "@stores/space.svelte";
 
   const S = SS.store;
 
   const {
     children,
+    parentPos,
     onViewportChange,
   }: {
     children: any;
+    parentPos: Pos;
     onViewportChange: (vp: Viewport) => void;
   } = $props();
+
+  console.log("PARENT POSSSS", parentPos);
+
+  $effect(() => {
+    parentPos.x, parentPos.y, parentPos.z;
+    triggerViewportChange();
+  });
 
   const transform = $derived.by(() => {
     const { x, y, z } = S.pos;
     const { width: w, height: h } = S.vp;
     const units = S.grid.size;
-    return `transform: translateX(${x * units * z + w / 2}px) translateY(${y * units * z + h / 2}px) scale(${z})`;
+    return `transform: translateX(${x * units * z + S.vp.renderedWidth / 2}px) translateY(${y * units * z + S.vp.renderedHeight / 2}px) scale(${z})`;
   });
 
   let el = $state<HTMLDivElement>(null!);
+
+  function triggerViewportChange() {
+    console.log("Viewport changing", parentPos);
+    const {
+      width,
+      height,
+      left: offsetX,
+      top: offsetY,
+    } = el.getBoundingClientRect();
+
+    const screenW = window.innerWidth;
+    const screenH = window.innerHeight;
+
+    onViewportChange({
+      width: width / parentPos.z,
+      height: height / parentPos.z,
+      renderedWidth: width,
+      renderedHeight: height,
+      offsetX,
+      offsetY,
+      screenW,
+      screenH,
+      scaled: parentPos.z,
+    });
+  }
 
   onMount(() => {
     const resizeObserver = new ResizeObserver((entries) => {
@@ -30,25 +64,6 @@
     resizeObserver.observe(el);
 
     window.addEventListener("resize", triggerViewportChange);
-
-    function triggerViewportChange() {
-      const {
-        width,
-        height,
-        left: offsetX,
-        top: offsetY,
-      } = el.getBoundingClientRect();
-      const screenW = window.innerWidth;
-      const screenH = window.innerHeight;
-      onViewportChange({
-        width,
-        height,
-        offsetX,
-        offsetY,
-        screenW,
-        screenH,
-      });
-    }
 
     triggerViewportChange();
 

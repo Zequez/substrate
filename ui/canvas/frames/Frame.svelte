@@ -192,15 +192,23 @@
       >
         Hey
       </div>
-      <div class="flex-grow bg-white rounded-b-[0.250rem] relative">
+      <div
+        class="flex-grow bg-white rounded-b-[0.250rem] relative overflow-hidden"
+      >
         {#if frame.assetUrl && asset}
           {#if isPowered}
-            <FrameEmbed {asset} />
+            <!-- <FrameEmbed {asset} /> -->
           {:else}
             <FrameAssetInfo {asset} />
           {/if}
         {:else if S.storeConfig.depth === 0}
-          <Substrate depth={S.storeConfig.depth + 1} />
+          <div
+            class="w-full h-full transform-origin-tl"
+            style="transform: scale({1 / S.pos.z}); width: {100 *
+              S.pos.z}%; height: {100 * S.pos.z}%;"
+          >
+            <Substrate parentPos={S.pos} depth={S.storeConfig.depth + 1} />
+          </div>
         {:else}
           Too deep
         {/if}

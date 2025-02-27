@@ -1,14 +1,29 @@
-import { onMount } from "svelte";
 import type { Box } from "../center/Frame";
 import { maybeReadLS } from "../center/snippets/utils";
+
 export type Viewport = {
+  // Size of element before it's scaled down when being embedded
   width: number;
   height: number;
+  // Actual size on screen
+  renderedWidth: number;
+  renderedHeight: number;
+  // Actual distance from top-left
   offsetX: number;
   offsetY: number;
+  // Actual total screen size
   screenW: number;
   screenH: number;
+  // Was the parent scaled?
+  scaled: number;
 };
+
+export type Pos = {
+  x: number;
+  y: number;
+  z: number;
+};
+
 function spaceStore(config: { centerAt: Box | null }) {
   const gridSize = 30;
   const maxZoom = 4; // x4 the original size
@@ -18,20 +33,17 @@ function spaceStore(config: { centerAt: Box | null }) {
   let vp = $state<Viewport>({
     width: 0,
     height: 0,
+    renderedWidth: 0,
+    renderedHeight: 0,
     offsetX: 0,
     offsetY: 0,
     screenW: 0,
     screenH: 0,
+    scaled: 1,
   });
   let vpEl = $state<HTMLDivElement>(null!);
 
   const zoomPanLSKey = "ZPXPY";
-
-  type Pos = {
-    x: number;
-    y: number;
-    z: number;
-  };
 
   const initialPos: Pos = (() => {
     if (config.centerAt) {
@@ -77,14 +89,17 @@ function spaceStore(config: { centerAt: Box | null }) {
     h: vp.height / gridSize / pos.z + vpBoxMargin,
   });
 
-  function mouseToGridPos(x: number, y: number) {
+  function mouseToGridPos(clientX: number, clientY: number) {
     const gridX = Math.floor(
-      (x - vp.offsetX - pos.x * pos.z * gridSize - vp.width / 2) /
+      (clientX - vp.offsetX - pos.x * pos.z * gridSize - vp.renderedWidth / 2) /
         gridSize /
         pos.z
     );
     const gridY = Math.floor(
-      (y - vp.offsetY - pos.y * pos.z * gridSize - vp.height / 2) /
+      (clientY -
+        vp.offsetY -
+        pos.y * pos.z * gridSize -
+        vp.renderedHeight / 2) /
         gridSize /
         pos.z
     );
@@ -93,7 +108,7 @@ function spaceStore(config: { centerAt: Box | null }) {
 
   function screenToCanvasPos(clientX: number, clientY: number) {
     const relativeX = clientX - vp.offsetX - vp.width / 2;
-    const relativeY = clientY - vp.offsetY - vp.height / 2;
+    const relativeY = clientY - vp.offsetY - vp.width / 2;
     return [relativeX, relativeY] as [number, number];
   }
 
@@ -144,7 +159,8 @@ function spaceStore(config: { centerAt: Box | null }) {
   }
 
   function transform() {
-    return `transform: translateX(${pos.x * gridSize * pos.z + vp.width / 2}px) translateY(${pos.y * gridSize * pos.z + vp.height / 2}px) scale(${pos.z})`;
+    // return `transform: translateX(${(pos.x * gridSize * pos.z) / vp.scaled + vp.width / 2}px) translateY(${(pos.y * gridSize * pos.z) / vp.scaled + vp.height / 2}px) scale(${pos.z})`;
+    return `transform: translateX(0px) translateY(0px) scale(${pos.z})`;
   }
 
   function boxStyle(box: Box, scale: number = 1) {

@@ -29,11 +29,12 @@
         onClickTool("select", "main");
       } else if (ev.code === "Digit2") {
         onClickTool("frame", "main");
-      } else if (ev.code === "Digit3") {
-        onClickTool("art", "main");
-      } else if (ev.code === "Digit4") {
-        onClickTool("lightning", "main");
       }
+      // else if (ev.code === "Digit3") {
+      //   onClickTool("art", "main");
+      // } else if (ev.code === "Digit4") {
+      //   onClickTool("lightning", "main");
+      // }
     }
 
     window.addEventListener("keydown", handleNumberShortcuts);
@@ -85,6 +86,6 @@
   )}
   {@render toolButton(SelectToolIcon, "Selection", "1", "select")}
   {@render toolButton(FrameToolIcon, "Linked Frame", "2", "frame")}
-  {@render toolButton(ArtToolIcon, "Art", "3", "art")}
-  {@render toolButton(LightningToolIcon, "Lightning", "4", "lightning")}
+  <!-- {@render toolButton(ArtToolIcon, "Art", "3", "art")} -->
+  <!-- {@render toolButton(LightningToolIcon, "Lightning", "4", "lightning")} -->
 </div>
